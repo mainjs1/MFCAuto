@@ -4,7 +4,7 @@ var gulp = require('gulp'),
     ts = require('gulp-typescript'),
     merge = require('merge2');
 
-gulp.task('core-change', function(){
+gulp.task('default', function(){
     var tsResult = gulp.src(['src/main/**.ts', 'src/dependent_definitions/**.ts'])
         .pipe(ts({
             removeComments: false,
@@ -23,5 +23,5 @@ gulp.task('core-change', function(){
 });
 
 gulp.task('watch', function() {
-    gulp.watch('src/main/*', ['core-change']);
+    gulp.watch('src/main/*', ['default']);
 });
