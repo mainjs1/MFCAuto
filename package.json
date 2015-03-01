@@ -1,0 +1,26 @@
+{
+  "name": "MFCAuto",
+  "version": "1.0.0",
+  "description": "A module for interacting with MyFreeCams chat servers.",
+  "main": "index.js",
+  "dependencies": {
+    "load": "^1.0.1",
+    "xmlhttprequest": "^1.7.0"
+  },
+  "devDependencies": {
+    "gulp": "^3.8.11",
+    "gulp-concat": "^2.5.2",
+    "gulp-typescript": "^2.4.2",
+    "gulp-util": "^3.0.3",
+    "merge2": "^0.3.1"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ZombieAlex/MFCAuto.git"
+  },
+  "author": "ZombieAlex",
+  "license": "MIT"
+}
