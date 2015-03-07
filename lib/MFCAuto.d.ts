@@ -384,10 +384,10 @@ interface SessionDetailsMessage {
     tk: number;
 }
 
-/// <reference path="../dependent_definitions/node.d.ts" />
-/// <reference path="Constants.d.ts" />
-/// <reference path="Utils.d.ts" />
-/// <reference path="sMessages.d.ts" />
+
+
+
+
 declare var EventEmitter: any;
 declare class Model implements NodeJS.EventEmitter {
     uid: number;
@@ -428,11 +428,11 @@ interface mergeCallbackPayload {
 interface ExpandedModel extends Model, Message, UserDetailsMessage, ModelDetailsMessage, SessionDetailsMessage {
 }
 
-/// <reference path="../dependent_definitions/node.d.ts" />
-/// <reference path="Constants.d.ts" />
-/// <reference path="sMessages.d.ts" />
-/// <reference path="Client.d.ts" />
-/// <reference path="Model.d.ts" />
+
+
+
+
+
 interface escape {
     (text: string): string;
 }
@@ -458,15 +458,15 @@ declare class Packet {
     toString(): string;
 }
 
-/// <reference path="../dependent_definitions/node.d.ts" />
-/// <reference path="Packet.d.ts" />
+
+
 declare function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) => string): void;
 declare function assert(condition: boolean, msg?: string, packet?: Packet): void;
 declare function applyMixins(derivedCtor: any, baseCtors: any[]): void;
 
-/// <reference path="../dependent_definitions/node.d.ts" />
-/// <reference path="Constants.d.ts" />
-/// <reference path="Utils.d.ts" />
+
+
+
 declare var EventEmitter: any;
 declare class Client implements NodeJS.EventEmitter {
     sessionId: number;
