@@ -116,5 +116,4 @@ client.connect();
 
 -----------------------
 
-####For many more examples, see the [MFCAuto_Scripts](https://github.com/ZombieAlex/MFCAuto_Scripts) repository.
 ####For API documentation, you can review the source in src/main.  It is heavily commented TypeScript.
