@@ -1,6 +1,6 @@
 {
   "name": "MFCAuto",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A module for interacting with MyFreeCams chat servers.",
   "main": "index.js",
   "dependencies": {
@@ -8,12 +8,12 @@
     "xmlhttprequest": "^1.7.0"
   },
   "devDependencies": {
-    "gulp": "^3.8.11",
-    "gulp-concat": "^2.5.2",
+    "gulp": "^3.9.0",
+    "gulp-concat": "^2.6.0",
     "gulp-strip-comments": "^1.0.1",
-    "gulp-typescript": "^2.4.2",
-    "gulp-util": "^3.0.3",
-    "merge2": "^0.3.1"
+    "gulp-typescript": "^2.8.1",
+    "gulp-util": "^3.0.6",
+    "merge2": "^0.3.6"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

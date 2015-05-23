@@ -1,9 +1,3 @@
-/// <reference path="../dependent_definitions/node.d.ts" />
-/// <reference path="Constants.ts" />
-/// <reference path="sMessages.ts" />
-/// <reference path="Client.ts" />
-/// <reference path="Model.ts" />
-
 //Forward definitions for the TypeScript compiler
 interface escape {
     (text: string): string;
@@ -42,7 +36,7 @@ class Packet {
 
     //Try to determine which model this packet is loosely "about"
     //meaning whose receiving the tip/chat/status update/etc
-    get aboutModel(): ExpandedModel{
+    get aboutModel(): ExpandedModel {
         //This whole method is black magic that may or may not be correct :)
         if (this._aboutModel === undefined) {
             var id = -1;
@@ -71,7 +65,7 @@ class Packet {
     //called directly, but rather for the decoded string to be accessed through
     //the pMessage property, which has the beneficial side-effect of caching the
     //result for faster repeated access.
-    private _parseEmotes(msg: string): string{
+    private _parseEmotes(msg: string): string {
         try {
             msg = unescape(msg);
 
@@ -81,7 +75,7 @@ class Packet {
             // This regex is directly from mfccore.js, ParseEmoteOutput.prototype.Parse, with the same variable name etc
             var oImgRegExPattern = /#~(e|c|u|ue),(\w+)(\.?)(jpeg|jpg|gif|png)?,([\w\-\:\);\(\]\=\$\?\*]{0,48}),?(\d*),?(\d*)~#/;
 
-            var re:any = [];
+            var re: any = [];
             while ((re = msg.match(oImgRegExPattern)) && nParseLimit < 10) {
                 var sShortcut = re[5] || '';
 
@@ -109,10 +103,10 @@ class Packet {
     //  "I am happy #~ue,2c9d2da6.gif,mhappy~#"
     //This returns that in the more human readable format:
     //  "I am happy :mhappy"
-    get pMessage(): string{
+    get pMessage(): string {
         //Formats the parsed message component of this packet, if one exists, with decoded emotes
         if (this._pMessage === undefined && typeof this.sMessage === 'object') {
-            if(this.FCType === FCTYPE.CMESG || this.FCType === FCTYPE.PMESG || this.FCType === FCTYPE.TOKENINC){
+            if (this.FCType === FCTYPE.CMESG || this.FCType === FCTYPE.PMESG || this.FCType === FCTYPE.TOKENINC) {
                 var obj: Message = <Message>(this.sMessage);
                 if (obj && obj.msg) {
                     this._pMessage = this._parseEmotes(obj.msg);
@@ -129,7 +123,7 @@ class Packet {
     //  AspenRae: Thanks guys! :mhappy
     //
     //This is useful for logging.
-    get chatString(): string{
+    get chatString(): string {
         if (this._chatString === undefined) {
             if (this.sMessage && typeof this.sMessage === 'object') {
                 switch (this.FCType) {

@@ -1,3 +1,63 @@
+declare var EventEmitter: any;
+declare class Client implements NodeJS.EventEmitter {
+    sessionId: number;
+    username: string;
+    password: string;
+    uid: number;
+    private net;
+    private debug;
+    private serverConfig;
+    private streamBuffer;
+    private streamBufferPosition;
+    private emoteParser;
+    private client;
+    private keepAlive;
+    constructor(username?: string, password?: string);
+    addListener: (event: string, listener: Function) => NodeJS.EventEmitter;
+    on: (event: string, listener: Function) => NodeJS.EventEmitter;
+    once: (event: string, listener: Function) => NodeJS.EventEmitter;
+    removeListener: (event: string, listener: Function) => NodeJS.EventEmitter;
+    removeAllListeners: (event?: string) => NodeJS.EventEmitter;
+    setMaxListeners: (n: number) => void;
+    listeners: (event: string) => Function[];
+    emit: (event: string, ...args: any[]) => boolean;
+    private log(msg, debugOnly?);
+    private _readData(buf);
+    private _packetReceived(packet);
+    private _readPacket();
+    EncodeRawChat(rawMsg: string, callback: EmoteParserCallback): void;
+    private loadFromMFC(url, callback, massager?);
+    private ensureEmoteParserIsLoaded(callback);
+    private ensureServerConfigIsLoaded(callback);
+    TxCmd(nType: FCTYPE, nTo?: number, nArg1?: number, nArg2?: number, sMsg?: string): void;
+    sendChat(id: number, msg: string, format?: boolean): void;
+    sendPM(id: number, msg: string, format?: boolean): void;
+    joinRoom(id: number): void;
+    leaveRoom(id: number): void;
+    connect(doLogin?: boolean, onConnect?: () => void): void;
+    login(username?: string, password?: string): void;
+}
+declare type EmoteParserCallback = (parsedString: string, aMsg2: {
+    txt: string;
+    url: string;
+    code: string;
+}[]) => void;
+interface EmoteParser {
+    Process(msg: string, callback: EmoteParserCallback): void;
+}
+interface ServerConfig {
+    ajax_servers: string[];
+    chat_server: string[];
+    h5video_servers: {
+        [index: number]: string;
+    };
+    release: boolean;
+    video_servers: string[];
+    websocket_servers: {
+        [index: string]: string;
+    };
+}
+
 declare var MAGIC: number;
 declare enum STATE {
     FreeChat = 0,
@@ -316,6 +376,71 @@ declare enum FCWOPT {
     C_SDATE = 8388608,
 }
 
+declare var EventEmitter: any;
+declare class Model implements NodeJS.EventEmitter {
+    uid: number;
+    [index: string]: any;
+    private client;
+    truepvt: number;
+    guests_muted: number;
+    basics_muted: number;
+    tags: string[];
+    addListener: (event: string, listener: Function) => NodeJS.EventEmitter;
+    on: (event: string, listener: Function) => NodeJS.EventEmitter;
+    once: (event: string, listener: Function) => NodeJS.EventEmitter;
+    removeListener: (event: string, listener: Function) => NodeJS.EventEmitter;
+    removeAllListeners: (event?: string) => NodeJS.EventEmitter;
+    setMaxListeners: (n: number) => void;
+    listeners: (event: string) => Function[];
+    emit: (event: string, ...args: any[]) => boolean;
+    private static EventsForAllModels;
+    static addListener: (event: string, listener: Function) => NodeJS.EventEmitter;
+    static on: (event: string, listener: Function) => NodeJS.EventEmitter;
+    static once: (event: string, listener: Function) => NodeJS.EventEmitter;
+    static removeListener: (event: string, listener: Function) => NodeJS.EventEmitter;
+    static removeAllListeners: (event?: string) => NodeJS.EventEmitter;
+    static setMaxListeners: (n: number) => void;
+    static listeners: (event: string) => Function[];
+    static emit: (event: string, ...args: any[]) => boolean;
+    private static knownModels;
+    constructor(uid: number, packet?: Packet);
+    static getModel(id: any): ExpandedModel;
+    mergePacket(packet: Packet): void;
+    toString(): string;
+}
+interface mergeCallbackPayload {
+    prop: string;
+    oldstate: number | string | string[];
+    newstate: number | string | string[];
+}
+interface ExpandedModel extends Model, Message, UserDetailsMessage, ModelDetailsMessage, SessionDetailsMessage {
+}
+
+interface escape {
+    (text: string): string;
+}
+declare var escape: escape;
+declare var unescape: escape;
+declare class Packet {
+    client: Client;
+    FCType: FCTYPE;
+    nFrom: number;
+    nTo: number;
+    nArg1: number;
+    nArg2: number;
+    sPayload: number;
+    sMessage: AnyMessage;
+    private _aboutModel;
+    private _pMessage;
+    private _chatString;
+    constructor(client: Client, FCType: FCTYPE, nFrom: number, nTo: number, nArg1: number, nArg2: number, sPayload: number, sMessage: AnyMessage);
+    aboutModel: ExpandedModel;
+    private _parseEmotes(msg);
+    pMessage: string;
+    chatString: string;
+    toString(): string;
+}
+
 declare type AnyMessage = FCTypeLoginResponse | FCTypeSlaveVShareResponse | FCTypeTagsResponse | FCTokenIncResponse | Message;
 declare type FCTypeLoginResponse = string;
 declare type FCTypeSlaveVShareResponse = number[];
@@ -384,145 +509,6 @@ interface SessionDetailsMessage {
     tk: number;
 }
 
-
-
-
-
-declare var EventEmitter: any;
-declare class Model implements NodeJS.EventEmitter {
-    uid: number;
-    [index: string]: any;
-    private client;
-    truepvt: number;
-    guests_muted: number;
-    basics_muted: number;
-    tags: string[];
-    addListener: (event: string, listener: Function) => NodeJS.EventEmitter;
-    on: (event: string, listener: Function) => NodeJS.EventEmitter;
-    once: (event: string, listener: Function) => NodeJS.EventEmitter;
-    removeListener: (event: string, listener: Function) => NodeJS.EventEmitter;
-    removeAllListeners: (event?: string) => NodeJS.EventEmitter;
-    setMaxListeners: (n: number) => void;
-    listeners: (event: string) => Function[];
-    emit: (event: string, ...args: any[]) => boolean;
-    private static EventsForAllModels;
-    static addListener: (event: string, listener: Function) => NodeJS.EventEmitter;
-    static on: (event: string, listener: Function) => NodeJS.EventEmitter;
-    static once: (event: string, listener: Function) => NodeJS.EventEmitter;
-    static removeListener: (event: string, listener: Function) => NodeJS.EventEmitter;
-    static removeAllListeners: (event?: string) => NodeJS.EventEmitter;
-    static setMaxListeners: (n: number) => void;
-    static listeners: (event: string) => Function[];
-    static emit: (event: string, ...args: any[]) => boolean;
-    private static knownModels;
-    constructor(uid: number, packet?: Packet);
-    static getModel(id: any): ExpandedModel;
-    mergePacket(packet: Packet): void;
-    toString(): string;
-}
-interface mergeCallbackPayload {
-    prop: string;
-    oldstate: number | string | string[];
-    newstate: number | string | string[];
-}
-interface ExpandedModel extends Model, Message, UserDetailsMessage, ModelDetailsMessage, SessionDetailsMessage {
-}
-
-
-
-
-
-
-interface escape {
-    (text: string): string;
-}
-declare var escape: escape;
-declare var unescape: escape;
-declare class Packet {
-    client: Client;
-    FCType: FCTYPE;
-    nFrom: number;
-    nTo: number;
-    nArg1: number;
-    nArg2: number;
-    sPayload: number;
-    sMessage: AnyMessage;
-    private _aboutModel;
-    private _pMessage;
-    private _chatString;
-    constructor(client: Client, FCType: FCTYPE, nFrom: number, nTo: number, nArg1: number, nArg2: number, sPayload: number, sMessage: AnyMessage);
-    aboutModel: ExpandedModel;
-    private _parseEmotes(msg);
-    pMessage: string;
-    chatString: string;
-    toString(): string;
-}
-
-
-
 declare function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) => string): void;
 declare function assert(condition: boolean, msg?: string, packet?: Packet): void;
 declare function applyMixins(derivedCtor: any, baseCtors: any[]): void;
-
-
-
-
-declare var EventEmitter: any;
-declare class Client implements NodeJS.EventEmitter {
-    sessionId: number;
-    username: string;
-    password: string;
-    uid: number;
-    private net;
-    private debug;
-    private serverConfig;
-    private streamBuffer;
-    private streamBufferPosition;
-    private emoteParser;
-    private client;
-    private keepAlive;
-    constructor(username?: string, password?: string);
-    addListener: (event: string, listener: Function) => NodeJS.EventEmitter;
-    on: (event: string, listener: Function) => NodeJS.EventEmitter;
-    once: (event: string, listener: Function) => NodeJS.EventEmitter;
-    removeListener: (event: string, listener: Function) => NodeJS.EventEmitter;
-    removeAllListeners: (event?: string) => NodeJS.EventEmitter;
-    setMaxListeners: (n: number) => void;
-    listeners: (event: string) => Function[];
-    emit: (event: string, ...args: any[]) => boolean;
-    private log(msg, debugOnly?);
-    private _readData(buf);
-    private _packetReceived(packet);
-    private _readPacket();
-    EncodeRawChat(rawMsg: string, callback: EmoteParserCallback): void;
-    private loadFromMFC(url, callback, massager?);
-    private ensureEmoteParserIsLoaded(callback);
-    private ensureServerConfigIsLoaded(callback);
-    TxCmd(nType: FCTYPE, nTo?: number, nArg1?: number, nArg2?: number, sMsg?: string): void;
-    sendChat(id: number, msg: string, format?: boolean): void;
-    sendPM(id: number, msg: string, format?: boolean): void;
-    joinRoom(id: number): void;
-    leaveRoom(id: number): void;
-    connect(doLogin?: boolean, onConnect?: () => void): void;
-    login(username?: string, password?: string): void;
-}
-declare type EmoteParserCallback = (parsedString: string, aMsg2: {
-    txt: string;
-    url: string;
-    code: string;
-}[]) => void;
-interface EmoteParser {
-    Process(msg: string, callback: EmoteParserCallback): void;
-}
-interface ServerConfig {
-    ajax_servers: string[];
-    chat_server: string[];
-    h5video_servers: {
-        [index: number]: string;
-    };
-    release: boolean;
-    video_servers: string[];
-    websocket_servers: {
-        [index: string]: string;
-    };
-}

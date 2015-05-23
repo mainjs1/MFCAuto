@@ -5,7 +5,7 @@ var MAGIC: number = -2027771214;
 
 //STATE is essentially the same as FCVIDEO but has friendly names
 //for better log messages and code readability
-enum STATE{
+enum STATE {
     FreeChat = 0,           //TX_IDLE
     //TX_RESET = 1,         //Unused?
     Away = 2,               //TX_AWAY

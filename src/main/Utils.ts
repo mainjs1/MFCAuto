@@ -1,8 +1,5 @@
-/// <reference path="../dependent_definitions/node.d.ts" />
-/// <reference path="Packet.ts" />
-
 //Helper logging function that timestamps each message and optionally outputs to a file as well
-function log(msg: string , fileRoot?: string, consoleFormatter?: (msg: string)=>string): void {
+function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) => string): void {
     assert(msg !== undefined, "Trying to print undefined.  This usually indicates a bug upstream from the log function.");
 
     //Pads single digit number with a leading zero, simple helper function for log2
@@ -33,7 +30,7 @@ function log(msg: string , fileRoot?: string, consoleFormatter?: (msg: string)=>
 }
 
 //Helper assertion function
-function assert(condition: boolean, msg ?: string, packet ?: Packet){
+function assert(condition: boolean, msg?: string, packet?: Packet) {
     if (!condition) {
         msg = "ASSERT: " + msg;
         if (packet !== undefined) {

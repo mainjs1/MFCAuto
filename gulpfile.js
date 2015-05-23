@@ -5,8 +5,10 @@ var gulp = require('gulp'),
     merge = require('merge2'),
     strip = require('gulp-strip-comments');
 
-gulp.task('default', function(){
-    var tsResult = gulp.src(['src/main/**.ts', 'src/dependent_definitions/**.ts'])
+gulp.task('default', ['build']);
+
+gulp.task('build', function(){
+    var tsResult = gulp.src(['src/main/**.ts', 'typings/**.ts', 'typings/*/**.ts'])
         .pipe(ts({
             removeComments: false,
             module: 'commonjs',

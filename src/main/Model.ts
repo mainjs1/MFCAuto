@@ -1,8 +1,3 @@
-/// <reference path="../dependent_definitions/node.d.ts" />
-/// <reference path="Constants.ts" />
-/// <reference path="Utils.ts" />
-/// <reference path="sMessages.ts" />
-
 var EventEmitter: any = require('events').EventEmitter;
 
 //Model represents a single MFC model, or technically any MFC user whether or
@@ -27,14 +22,14 @@ class Model implements NodeJS.EventEmitter {
     //like:  var m = new Model();  m.on(...);
     //Note that these are not implemented here, we will mixin the correct
     //implementation after this class declaration.
-    addListener: (event:string,listener:Function) => NodeJS.EventEmitter;
-    on: (event:string,listener:Function) => NodeJS.EventEmitter;
-    once: (event:string,listener:Function) => NodeJS.EventEmitter;
-    removeListener: (event:string,listener:Function) => NodeJS.EventEmitter;
-    removeAllListeners: (event?:string) => NodeJS.EventEmitter;
-    setMaxListeners: (n:number) => void;
-    listeners: (event:string) => Function[];
-    emit: (event:string, ...args: any[]) => boolean;
+    addListener: (event: string, listener: Function) => NodeJS.EventEmitter;
+    on: (event: string, listener: Function) => NodeJS.EventEmitter;
+    once: (event: string, listener: Function) => NodeJS.EventEmitter;
+    removeListener: (event: string, listener: Function) => NodeJS.EventEmitter;
+    removeAllListeners: (event?: string) => NodeJS.EventEmitter;
+    setMaxListeners: (n: number) => void;
+    listeners: (event: string) => Function[];
+    emit: (event: string, ...args: any[]) => boolean;
 
     //EventEmitter object to be used for events firing for all models
     private static EventsForAllModels: NodeJS.EventEmitter = new EventEmitter();
@@ -53,7 +48,7 @@ class Model implements NodeJS.EventEmitter {
     //A registry of all known models that is built up as we receive
     //model information from the server.  This should not be accessed
     //directly.  Use the Model.getModel() method instead.
-    private static knownModels: {[index: number]: ExpandedModel} = {};
+    private static knownModels: { [index: number]: ExpandedModel } = {};
 
     //Constructs a new model with the given user id and, optionally, a
     //SESSIONSTATE or TAGS packet containing the initial model details.
@@ -68,8 +63,8 @@ class Model implements NodeJS.EventEmitter {
 
     //Retrieves a specific model instance by user id from knownModels, creating
     //the model instance if it does not already exist.
-    static getModel(id: any): ExpandedModel{
-        if(typeof id === 'string') id = parseInt(id);
+    static getModel(id: any): ExpandedModel {
+        if (typeof id === 'string') id = parseInt(id);
         Model.knownModels[id] = Model.knownModels[id] || <ExpandedModel>(new Model(id));
         return Model.knownModels[id];
     }
@@ -126,7 +121,7 @@ class Model implements NodeJS.EventEmitter {
                     //names like 'rank' or 'camscore'.
                     if (key === "u" || key === "m" || key === "s") {
                         for (var key2 in payload[key]) {
-                            callbackStack.push({prop: key2, oldstate: this[key2], newstate: payload[key][key2]});
+                            callbackStack.push({ prop: key2, oldstate: this[key2], newstate: payload[key][key2] });
                             this[key2] = payload[key][key2];
                             if (key === "m" && key2 === "flags") {
                                 this.truepvt = payload[key][key2] & FCOPT.TRUEPVT ? 1 : 0;
@@ -135,15 +130,15 @@ class Model implements NodeJS.EventEmitter {
                             }
                         }
                     } else {
-                        callbackStack.push({prop: key, oldstate: this[key], newstate: payload[key]});
+                        callbackStack.push({ prop: key, oldstate: this[key], newstate: payload[key] });
                         this[key] = payload[key];
                     }
                 }
                 break;
             case FCTYPE.TAGS:
                 var tagPayload: FCTypeTagsResponse = <FCTypeTagsResponse>packet.sMessage;
-                console.assert(tagPayload[this.uid]!==undefined, "This FCTYPE.TAGS messages doesn't appear to be about this model(" + this.uid + "): " + JSON.stringify(tagPayload));
-                callbackStack.push({prop: "tags", oldstate: this.tags, newstate: (this.tags = this.tags.concat(tagPayload[this.uid]))});
+                console.assert(tagPayload[this.uid] !== undefined, "This FCTYPE.TAGS messages doesn't appear to be about this model(" + this.uid + "): " + JSON.stringify(tagPayload));
+                callbackStack.push({ prop: "tags", oldstate: this.tags, newstate: (this.tags = this.tags.concat(tagPayload[this.uid])) });
                 //@TODO - Are tags incrementally added in updates or just given all at once in a single dump??  Not sure, for now
                 //we're always adding to any existing tags.  Have to watch if this causes tag duplication or not
                 break;
@@ -152,7 +147,7 @@ class Model implements NodeJS.EventEmitter {
         }
 
         //After all the changes have been applied, fire our events
-        callbackStack.forEach((function(item: mergeCallbackPayload){
+        callbackStack.forEach((function(item: mergeCallbackPayload) {
             this.emit(item.prop, this, item.oldstate, item.newstate);
             Model.emit(item.prop, this, item.oldstate, item.newstate);
         }).bind(this));
@@ -170,11 +165,11 @@ class Model implements NodeJS.EventEmitter {
     }
 }
 
-interface mergeCallbackPayload{prop: string; oldstate: number|string|string[]; newstate: number|string|string[]};
+interface mergeCallbackPayload { prop: string; oldstate: number|string|string[]; newstate: number|string|string[] };
 
 applyMixins(Model, [EventEmitter]);
 
 // ExpandedModel is a Model with all the packet details merged at the top level already
-interface ExpandedModel extends Model, Message, UserDetailsMessage, ModelDetailsMessage, SessionDetailsMessage {}
+interface ExpandedModel extends Model, Message, UserDetailsMessage, ModelDetailsMessage, SessionDetailsMessage { }
 
 exports.Model = Model;
