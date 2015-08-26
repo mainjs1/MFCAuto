@@ -421,7 +421,7 @@ class Client implements NodeJS.EventEmitter {
                 this.client.on('end', function() {
                     this.log('Disconnected from MyFreeCams.  Reconnecting in 30 seconds...'); // Is 30 seconds reasonable?
                     clearInterval(this.keepAlive);
-                    setTimeout(this.connect, 30000);
+                    setTimeout(this.connect.bind(this), 30000);
                 }.bind(this));
 
                 //Connecting without logging in is the rarer case, so make the default to log in
