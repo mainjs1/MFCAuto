@@ -1,5 +1,5 @@
 //Various constants and enums used by MFC.  Most of these values can be seen here:
-//http://www.myfreecams.com/mfc2/lib/mfccore.js
+//http://www.myfreecams.com/_js/mfccore.js
 
 var MAGIC: number = -2027771214;
 

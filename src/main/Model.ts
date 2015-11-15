@@ -68,6 +68,21 @@ class Model implements NodeJS.EventEmitter {
         Model.knownModels[id] = Model.knownModels[id] || <ExpandedModel>(new Model(id));
         return Model.knownModels[id];
     }
+    
+    //Retrieves a list of models matching the given filter.
+    static findModels(filter: (model:ExpandedModel) => boolean): ExpandedModel[]{
+        let models: ExpandedModel[] = [];
+
+        for(let id in Model.knownModels){
+            if(Model.knownModels.hasOwnProperty(id)){
+                if(filter(Model.knownModels[id])){
+                    models.push(Model.knownModels[id]);
+                }
+            }
+        }
+        
+        return models;
+    }
 
     //Merges a raw MFC packet into this model's state
     //

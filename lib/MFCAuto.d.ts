@@ -36,6 +36,7 @@ declare class Client implements NodeJS.EventEmitter {
     leaveRoom(id: number): void;
     connect(doLogin?: boolean, onConnect?: () => void): void;
     login(username?: string, password?: string): void;
+    connectAndWaitForModels(onConnect: () => void): void;
 }
 declare type EmoteParserCallback = (parsedString: string, aMsg2: {
     txt: string;
@@ -405,6 +406,7 @@ declare class Model implements NodeJS.EventEmitter {
     private static knownModels;
     constructor(uid: number, packet?: Packet);
     static getModel(id: any): ExpandedModel;
+    static findModels(filter: (model: ExpandedModel) => boolean): ExpandedModel[];
     mergePacket(packet: Packet): void;
     toString(): string;
 }

@@ -92,5 +92,5 @@ interface SessionDetailsMessage {
     gst: string;    //As a guest, this is always the empty string ""
     ip: string;     //As a guest, this is always the string "0.0.0.0"
     rp: number;     //As a guest, this is always 0
-    tk: number;     //As a guest, this is lways 0
+    tk: number;     //As a guest, this is always 0
 }

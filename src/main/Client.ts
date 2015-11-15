@@ -209,7 +209,7 @@ class Client implements NodeJS.EventEmitter {
     //in the given example.
     //
     //On the MFC site, this code is part of the ParseEmoteInput function in
-    //http://www.myfreecams.com/mfc2/lib/mfccore.js, and it is especially convoluted
+    //http://www.myfreecams.com/_js/mfccore.js, and it is especially convoluted
     //code involving ajax requests back to the server depending on the text you're
     //sending and a giant hashtable of known emotes.
     //
@@ -273,7 +273,7 @@ class Client implements NodeJS.EventEmitter {
         if (this.emoteParser !== undefined) {
             callback();
         } else {
-            this.loadFromMFC("http://www.myfreecams.com/mfc2/lib/mfccore.js", function(err: any, obj: any) {
+            this.loadFromMFC("http://www.myfreecams.com/_js/mfccore.js", function(err: any, obj: any) {
                 if (err) throw err;
                 this.emoteParser = new obj.ParseEmoteInput();
                 callback();
@@ -300,7 +300,7 @@ class Client implements NodeJS.EventEmitter {
         if (this.serverConfig !== undefined) {
             callback();
         } else {
-            this.loadFromMFC("http://www.myfreecams.com/mfc2/data/serverconfig.js", function(err: any, obj: any) {
+            this.loadFromMFC("http://www.myfreecams.com/_js/serverconfig.js", function(err: any, obj: any) {
                 if (err) throw err;
                 this.serverConfig = obj.serverConfig;
                 callback();
@@ -451,6 +451,21 @@ class Client implements NodeJS.EventEmitter {
             this.password = password;
         }
         this.TxCmd(FCTYPE.LOGIN, 0, 20071025, 0, this.username + ":" + this.password);
+    }
+    
+    //Connects to MFC and logs in, just like this.connect(true),
+    //but in this version the callback is not invoked immediately
+    //on socket connection, but instead when the initial list of
+    //online models has been fully populated
+    connectAndWaitForModels(onConnect: () => void){
+        function modelListFinished(packet: Packet){
+            if (packet.nTo === 20 && packet.nArg1 === packet.nArg2) {
+                this.removeListener("METRICS", modelListFinished);
+                onConnect();
+            }
+        }
+        this.on("METRICS", modelListFinished.bind(this));
+        this.connect(true);
     }
 }
 applyMixins(Client, [EventEmitter]);
