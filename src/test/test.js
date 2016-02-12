@@ -7,6 +7,15 @@ let assert = require('assert');
 let mfc = require('../../lib/MFCAuto.js');
 
 describe('Startup Scenarios', function () {
+    it("should be able to dynamically load the MFC server config", function (done) {
+        let client = new mfc.Client();
+        client.ensureServerConfigIsLoaded(function () {
+            assert.notStrictEqual(client.serverConfig, undefined);
+            assert.notStrictEqual(client.serverConfig.chat_servers, undefined);
+            assert.notStrictEqual(client.serverConfig.chat_servers.length, 0);
+            done();
+        });
+    });
     it("should be able to connect without logging in", function (done) {
         let client = new mfc.Client();
         client.connect(false, done);
@@ -76,13 +85,56 @@ describe('Connected Scenarios', function () {
             client.on("CMESG", function (packet) {
                 assert.strictEqual(packet.aboutModel.uid, queen.uid);
                 if (packet.chatString !== undefined) {
+                    //@TODO - Also ensure at least one of these
+                    //messages has an emote to cover Packet._parseEmotes
+                    //ideally we'd also check tips and tip messages but
+                    //there is no guarantee we would see a tip before the timeout
                     client.leaveRoom(packet.aboutModel.uid);
                     client.removeAllListeners("CMESG");
                     done();
                 }
             });
-            
+
             client.joinRoom(queen.uid);
         });
+
+        it("should be able to encode chat strings", function (done) {
+            client.EncodeRawChat("I am happy :mhappy", function (parsedString, aMsg2) {
+                assert.strictEqual(aMsg2.length,2,"Unexpected number of emotes parsed");
+                assert.strictEqual(aMsg2[0], "I am happy ");
+                assert.strictEqual(aMsg2[1].txt,":mhappy");
+                assert.strictEqual(aMsg2[1].url,"http://www.myfreecams.com/chat_images/u/2c/2c9d2da6.gif");
+                assert.strictEqual(aMsg2[1].code,"#~ue,2c9d2da6.gif,mhappy~#");
+                assert.strictEqual(parsedString, "I am happy #~ue,2c9d2da6.gif,mhappy~#", "Encoding failed or returned an unexpected format");
+                done();
+            });
+        });
+
+        it("should be able to send chat", function (done) {
+            /*
+            @TODO - Find a room that allows guest chat, join it, send some text
+            and validate that we receive the text back with a matching username, etc
+            */
+            //assert.fail("@TODO");
+            done();
+        });
+        
+        /*
+        @TODO - More tests...
+        Add a callback to the joinroom/sendChat/sendPM functions and ensure we
+        get error messages for them when we're not allowed
+        
+        Generally change the callback formats to fit the expected patters of error first
+        
+        cover client.sendPM somehow (might need to log in for that unfortunately)
+        
+        maybe in before() here you set up an ANY handler that collects all seen FCTypes
+        from the server and raises and then at the end we have one final test that confirms
+        that we didn't see a new FCType?  Or we could do the same by getting mfccore.js from
+        the server and iterating over all the FCTypes in it I guess.  The latter might be
+        faster and more complete, assuming we know where to find the latest greated mfccore.js
+        
+        set up a gulp test task and integrate it with VS Code
+        */
     });
 });

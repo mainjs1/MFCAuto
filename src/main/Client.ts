@@ -276,6 +276,7 @@ class Client implements NodeJS.EventEmitter {
             this.loadFromMFC("http://www.myfreecams.com/_js/mfccore.js", function(err: any, obj: any) {
                 if (err) throw err;
                 this.emoteParser = new obj.ParseEmoteInput();
+                this.emoteParser.setUrl("http://www.myfreecams.com/mfc2/php/ParseChatStream.php");
                 callback();
             }.bind(this),
                 function(content) {
@@ -289,7 +290,7 @@ class Client implements NodeJS.EventEmitter {
                     content = content.substr(startIndex, endIndex - startIndex);
 
                     //Then massage the function somewhat and prepend some prerequisites
-                    content = "var document = {location: {protocol: 'file:'}};var XMLHttpRequest = require('XMLHttpRequest').XMLHttpRequest;function bind(that,f){return f.bind(that);}" + content.replace(/createRequestObject\(\)/g, "new XMLHttpRequest()").replace(/new MfcImageHost\(\)/g, "{host: function(){return '';}}").replace(/this\.Reset\(\);/g, "this.Reset();this.oReq = new XMLHttpRequest();");
+                    content = "var document = {cookie: ''};var XMLHttpRequest = require('XMLHttpRequest').XMLHttpRequest;function bind(that,f){return f.bind(that);}" + content.replace(/createRequestObject\(\)/g, "new XMLHttpRequest()").replace(/new MfcImageHost\(\)/g, "{host: function(){return '';}}").replace(/this\.Reset\(\);/g, "this.Reset();this.oReq = new XMLHttpRequest();");
                     return content;
                 });
         }
