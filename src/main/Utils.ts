@@ -51,4 +51,42 @@ function applyMixins(derivedCtor: any, baseCtors: any[]) {
     });
 }
 
+//Forward declarations for Map and Set, which TypeScript won't recognize
+//when your compilation target is set to ES5, which we need to keep as our
+//target because even the latest Node versions (as of Feb 14, 2016) don't
+//support everything TypeScript tries to emit when you set the target to ES6,
+//and I don't really want to add an intermediate compilation step through
+//Babel or any such nonsense.
+interface Map<K, V> {
+    clear(): void;
+    delete(key: K): boolean;
+    forEach(callbackfn: (value: V, index: K, map: Map<K, V>) => void, thisArg?: any): void;
+    get(key: K): V;
+    has(key: K): boolean;
+    set(key: K, value: V): Map<K, V>;
+    size: number;
+    values(): Array<V>;
+    keys(): Array<K>;
+    entries(): Array<Array<K|V>>;
+}
+declare var Map: {
+    new <K, V>(): Map<K, V>;
+    prototype: Map<any, any>;
+}
+interface Set<T> {
+    add(value: T): Set<T>;
+    clear(): void;
+    delete(value: T): boolean;
+    forEach(callbackfn: (value: T, index: T, set: Set<T>) => void, thisArg?: any): void;
+    has(value: T): boolean;
+    size: number;
+    values(): Array<T>;
+    keys(): Array<T>;
+    entries(): Array<Array<T>>;
+}
+declare var Set: {
+    new <T>(): Set<T>;
+    prototype: Set<any>;
+}
+
 exports.log = log;

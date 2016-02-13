@@ -18,7 +18,7 @@ class Packet {
     sMessage: AnyMessage;      //The actual payload
 
     //Property backing fields
-    private _aboutModel: ExpandedModel;
+    private _aboutModel: Model;
     private _pMessage: string;
     private _chatString: string;
 
@@ -36,7 +36,7 @@ class Packet {
 
     //Try to determine which model this packet is loosely "about"
     //meaning whose receiving the tip/chat/status update/etc
-    get aboutModel(): ExpandedModel {
+    get aboutModel(): Model {
         //This whole method is black magic that may or may not be correct :)
         if (this._aboutModel === undefined) {
             var id = -1;

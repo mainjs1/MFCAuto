@@ -37,23 +37,34 @@ describe('Startup Scenarios', function () {
 describe('Connected Scenarios', function () {
     this.timeout(7000);
     let client = new mfc.Client();
+    let queen;
     before(function (done) {
-        client.connectAndWaitForModels(done);
+        client.connectAndWaitForModels(function(){
+            //Find the most popular model in free chat right now
+            let popularModels = mfc.Model.findModels((m) => m.bestSession.vs === 0);
+            assert.notStrictEqual(popularModels.length, 0, "No models in public chat??? Is MFC down?");
+            popularModels.sort(function (a, b) {
+                if (a.bestSession.rc > b.bestSession.rc) {
+                    return 1;
+                }
+                if (a.bestSession.rc < b.bestSession.rc) {
+                    return -1;
+                }
+                return 0;
+            });
+
+            queen = popularModels[popularModels.length - 1];
+            done();
+        });
     });
     describe("Client", function () {
         it("should be able to send a USERNAMELOOKUP query and parse a valid response", function (done) {
-            //Get all the models that are on cam
-            let models = mfc.Model.findModels((m) => m.vs === 0);
-            assert.notStrictEqual(models.length, 0, "No online models??  That's weird");
-            
-            //Pull out the first online model
-            let model = models[0];
-            assert.notStrictEqual(model.nm, undefined, "Models no longer have a name (nm) property?");
+            assert.notStrictEqual(queen.bestSession.nm, undefined, "How do we not know the top model's name??");
 
             //Register a handler for USERNAMELOOKUP messages
             function callback(packet) {
                 //Check the contents, looking for known/unknown properties and validating the username //@TODO - @BUGBUG
-                assert.strictEqual(packet.sMessage.nm, model.nm);
+                assert.strictEqual(packet.sMessage.nm, queen.bestSession.nm);
             
                 //Remove this listener and complete the test
                 client.removeListener("USERNAMELOOKUP", callback);
@@ -63,27 +74,10 @@ describe('Connected Scenarios', function () {
             client.on("USERNAMELOOKUP", callback);
 
             //Query for her username
-            client.TxCmd(mfc.FCTYPE.USERNAMELOOKUP, 0, 20, 0, model.nm);
+            client.TxCmd(mfc.FCTYPE.USERNAMELOOKUP, 0, 20, 0, queen.bestSession.nm);
         });
 
         it("should be able to join a room and log chat", function (done) {
-            //Get all models with over 500 people in their room
-            let popularModels = mfc.Model.findModels((m) => m.rc >= 500 && m.vs === 0);
-            assert.notStrictEqual(popularModels.length, 0, "No models in public chat have more than 500 members in their rooms?");
-           
-            //Find the most popular model in free chat right now
-            popularModels.sort(function (a, b) {
-                if (a.rc > b.rc) {
-                    return 1;
-                }
-                if (a.rc < b.rc) {
-                    return -1;
-                }
-                return 0;
-            });
-
-            let queen = popularModels[popularModels.length - 1];
-
             client.on("CMESG", function (packet) {
                 assert.strictEqual(packet.aboutModel.uid, queen.uid);
                 if (packet.chatString !== undefined) {
@@ -138,5 +132,23 @@ describe('Connected Scenarios', function () {
         
         set up a gulp test task and integrate it with VS Code
         */
+    });
+    
+    describe("Model", function(){
+        this.timeout(40000);
+        it("should be able to listen for a specific model state change", function(done){
+            mfc.Model.getModel(queen.uid).on("rc", function(model/*, oldstate, newstate*/){
+                assert.strictEqual(model.uid,queen.uid, "We got a callback for someone who isn't the top model?");
+                mfc.Model.getModel(queen.uid).removeAllListeners("rc");
+                done();
+            });
+        });
+        it("should be able to listen for global model state change events", function(done){
+            mfc.Model.on("rc", function(model/*, oldstate, newstate*/){
+                assert.notStrictEqual(model, undefined);
+                mfc.Model.removeAllListeners("rc");
+                done();
+            });
+        });
     });
 });

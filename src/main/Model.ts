@@ -9,14 +9,28 @@ var EventEmitter: any = require('events').EventEmitter;
 //Finally, Model emits events when the Model's state is changed.  This is best
 //explained via examples.  So see the readme.md
 class Model implements NodeJS.EventEmitter {
-    uid: number;            //This Model's user id
-    [index: string]: any;   //This instance will also serve as an expando dictionary for various properties
-
+    uid: number;    //This Model's user id
+    tags: string[] = []; //Tags are not session specific
     private client: Client;
-    truepvt: number;
-    guests_muted: number;
-    basics_muted: number;
-    tags: string[] = [];
+
+    //Models, and other members, can be logged on more than once. For example, in
+    //multiple browsers, etc. In those cases, we'll be getting distinct FCVIDEO
+    //state updates from each session. And it's not accurate to report only the
+    //most recently seen video state. For example, a model might be in free chat
+    //and open another browser window to check her email or current rank. Then
+    //she closes the secondary browser window and we get a sessionstate updated
+    //saying that second session is now Offline, but she never left cam in her
+    //original session. It's incorrect to say she's offline now. So State is not
+    //as simple as a single value, and we must track all known sessions for each
+    //member.
+    //
+    //This is a map of SessionID->full state for that session, for all known
+    //sessions known for this user.
+    //
+    //You should be using the .bestSession property to find the most correct
+    //session for all-up status reporting.
+    knownSessions: Map<number, any> = <Map<number, any>>new Map();
+    lastKnownSessionId: number;
 
     //Instance EventEmitter methods for this specific model.  These are used
     //like:  var m = new Model();  m.on(...);
@@ -48,13 +62,12 @@ class Model implements NodeJS.EventEmitter {
     //A registry of all known models that is built up as we receive
     //model information from the server.  This should not be accessed
     //directly.  Use the Model.getModel() method instead.
-    private static knownModels: { [index: number]: ExpandedModel } = {};
+    private static knownModels: { [index: number]: Model } = {};
 
     //Constructs a new model with the given user id and, optionally, a
     //SESSIONSTATE or TAGS packet containing the initial model details.
     constructor(uid: number, packet?: Packet) {
         this.uid = uid;
-        this['vs'] = STATE.Offline; //All model's start as Offline
         if (packet !== undefined) {
             this.client = packet.client;
             this.mergePacket(packet);
@@ -63,67 +76,117 @@ class Model implements NodeJS.EventEmitter {
 
     //Retrieves a specific model instance by user id from knownModels, creating
     //the model instance if it does not already exist.
-    static getModel(id: any): ExpandedModel {
+    static getModel(id: any): Model {
         if (typeof id === 'string') id = parseInt(id);
-        Model.knownModels[id] = Model.knownModels[id] || <ExpandedModel>(new Model(id));
+        Model.knownModels[id] = Model.knownModels[id] || <Model>(new Model(id));
         return Model.knownModels[id];
     }
     
     //Retrieves a list of models matching the given filter.
-    static findModels(filter: (model:ExpandedModel) => boolean): ExpandedModel[]{
-        let models: ExpandedModel[] = [];
+    static findModels(filter: (model: Model) => boolean): Model[] {
+        let models: Model[] = [];
 
-        for(let id in Model.knownModels){
-            if(Model.knownModels.hasOwnProperty(id)){
-                if(filter(Model.knownModels[id])){
+        for (let id in Model.knownModels) {
+            if (Model.knownModels.hasOwnProperty(id)) {
+                if (filter(Model.knownModels[id])) {
                     models.push(Model.knownModels[id]);
                 }
             }
         }
-        
+
         return models;
+    }
+    
+    //Similar to MfcSessionManager.prototype.determineBestSession
+    //picks the most 'correct' session to use for reporting model status
+    //Basically, if model software is being used, pick the session
+    //with the highest sessionid among non-offline sessions where
+    //model software is being used.  Otherwise, pick the session
+    //with the highest sessionid among all non-offline sessions.
+    //Otherwise, if all sessions are offline, pick the highest offline
+    //session id.
+    get bestSessionId(): number {
+        let sessionIdToUse: number = 0;
+        let foundModelSoftware: boolean = false;
+        this.knownSessions.forEach(function(sessionObj, sessionId) {
+            if (sessionObj.vs === STATE.Offline) {
+                return; //Don't consider offline sessions
+            }
+            let useThis = false;
+            if (sessionObj.model_sw) {
+                if (foundModelSoftware) {
+                    if (sessionId > sessionIdToUse) {
+                        useThis = true;
+                    }
+                } else {
+                    foundModelSoftware = true;
+                    useThis = true;
+                }
+            } else if (!foundModelSoftware && sessionId > sessionIdToUse) {
+                useThis = true;
+            }
+            if (useThis) {
+                sessionIdToUse = sessionId;
+            }
+        });
+        if(sessionIdToUse === 0 && this.knownSessions.size > 0){
+            //There weren't any online sessions, but there were some offline sessions,
+            //return the highest numbered one we have... (Technically, I guess it would be
+            //better to return the one that went offline last, but I'm not sure it makes
+            //a big enough difference in practice)
+            sessionIdToUse = (<any>Array).from(this.knownSessions.keys)[this.knownSessions.size-1];
+        }
+        return sessionIdToUse;
+    }
+
+    get bestSession(): any { //@TODO - Make this a strong type where possible
+        let session = this.knownSessions.get(this.bestSessionId);
+        if (session === undefined) {
+            session = { sid: 0, vs: STATE.Offline };
+        }
+        return session;
     }
 
     //Merges a raw MFC packet into this model's state
     //
-    //In short, it cracks open any given Message or FCTypeTagResponse message
-    //and adds the members from that message to this instance.  In the case
-    //of a SESSIONSTATE packet containing a Message, this method will crack
-    //open the UserDetailsMessage, ModelDetailsMessage, and SessionDetailsMessages
-    //and add each of their members to this instance at the top level.
-    //
-    //In other words packet.sMessage.m.camscore will become this.camscore, etc.
-    //This may not be the best design, but in practice I've not seen any properties
-    //overwritten accidentally and it's been working well for years now.
-    //
-    //Then this method fires an event for both this Model instance and all Model
-    //instances, indicating that the given property has been updated and providing
-    //the previous value of the property and the current value of the property.
-    //
-    //MFC does something a little similar in their site code, check out the
-    //StoreUserHash method in their top.html.  In their case they are renaming
-    //many of the properties such that "uid" becomes "user_id", for instance.
-    //We're not doing that here, which could potentially lead to some confusion
-    //if you're comparing a Model instance to how MFC stores users in g_hUsers.
-    //But my feeling is that what we're doing here is closer to the actual messages
-    //coming from the server, and those are what we deal with in MFCAuto rather
-    //than the specific quirks of MFC's own client side abstractions.
-    //
-    //Finally, there are a few bitmasks that are sent as part of the chat messages.
+    //Also, there are a few bitmasks that are sent as part of the chat messages.
     //Just like StoreUserHash, we will decode those bitmasks here for convenience
     //as they contain useful information like if a private is true private or
-    //if guests or basics are muted.
+    //if guests or basics are muted or if the model software is being used.
     mergePacket(packet: Packet): void {
         if (this.client === undefined && packet.client !== undefined) {
             this.client = packet.client;
         }
 
+        if (packet.FCType !== FCTYPE.TAGS && (packet.sMessage === undefined || (<Message>packet.sMessage).sid === undefined)) { //Should we keep sid of 0?  I guess yes
+            //Without a session id, there's nothing we can merge.  True?  Will validate with the following assertion.
+            assert(packet.FCType !== FCTYPE.SESSIONSTATE && packet.FCType !== FCTYPE.ADDFRIEND, `We can have one of these without a session id?? ${packet.toString()}`);
+            return;
+        }
+        
+        //Find the session being updated by this packet
+        let previousSession = this.bestSession;
+        let currentSessionId: number;
+        if(packet.FCType === FCTYPE.TAGS){
+            //Special case TAGS packets, because they don't contain a sessionID
+            //So just fake that we're talking about the previously known best session
+            currentSessionId = previousSession.sid;
+        }else{
+            currentSessionId = (<Message>packet.sMessage).sid;
+        }
+        if (!this.knownSessions.has(currentSessionId)) {
+            this.knownSessions.set(currentSessionId, {});
+        }
+        let currentSession = this.knownSessions.get(currentSessionId);
+
         var callbackStack: mergeCallbackPayload[] = [];
 
+        //Merge the updates into the correct session
         switch (packet.FCType) {
             case FCTYPE.SESSIONSTATE:
             case FCTYPE.ADDFRIEND:
                 assert(this.uid === packet.nArg2 || this.uid === packet.nArg1, "Merging packet meant for a different model!", packet);
+                assert(packet.sMessage === undefined || (<Message>(packet.sMessage)).lv === undefined || (<Message>(packet.sMessage)).lv === 4, "Merging a non-model? Non-models need some special casing that is not currently implemented.");
 
                 //This must be typed as any in order to iterate over its keys in a for-in
                 //It's real type is Message, but since my type definitions may be incomplete
@@ -132,22 +195,23 @@ class Model implements NodeJS.EventEmitter {
                 var payload: any = packet.sMessage;
 
                 for (var key in payload) {
-                    //Rip out the sMessage.u|m|s properties and put them on 'this' at
+                    //Rip out the sMessage.u|m|s properties and put them on the session at
                     //the top level.  This allows for listening on simple event
                     //names like 'rank' or 'camscore'.
                     if (key === "u" || key === "m" || key === "s") {
                         for (var key2 in payload[key]) {
-                            callbackStack.push({ prop: key2, oldstate: this[key2], newstate: payload[key][key2] });
-                            this[key2] = payload[key][key2];
+                            callbackStack.push({ prop: key2, oldstate: previousSession[key2], newstate: payload[key][key2] });
+                            currentSession[key2] = payload[key][key2];
                             if (key === "m" && key2 === "flags") {
-                                this.truepvt = payload[key][key2] & FCOPT.TRUEPVT ? 1 : 0;
-                                this.guests_muted = payload[key][key2] & FCOPT.GUESTMUTE ? 1 : 0;
-                                this.basics_muted = payload[key][key2] & FCOPT.BASICMUTE ? 1 : 0;
+                                currentSession.truepvt = payload[key][key2] & FCOPT.TRUEPVT ? 1 : 0;
+                                currentSession.guests_muted = payload[key][key2] & FCOPT.GUESTMUTE ? 1 : 0;
+                                currentSession.basics_muted = payload[key][key2] & FCOPT.BASICMUTE ? 1 : 0;
+                                currentSession.model_sw = payload[key][key2] & FCOPT.MODELSW ? 1 : 0;
                             }
                         }
                     } else {
-                        callbackStack.push({ prop: key, oldstate: this[key], newstate: payload[key] });
-                        this[key] = payload[key];
+                        callbackStack.push({ prop: key, oldstate: previousSession[key], newstate: payload[key] });
+                        currentSession[key] = payload[key];
                     }
                 }
                 break;
@@ -161,12 +225,53 @@ class Model implements NodeJS.EventEmitter {
             default:
                 throw ("Unknown packet type for: " + packet);
         }
+        
+        //If our "best" session has changed to a new session, the above
+        //will capture any changed or added properties, but not the removed
+        //properties, so we'll add callbacks for removed properties here...
+        if (currentSession.sid !== previousSession.sid) {
+            Object.getOwnPropertyNames(previousSession).forEach(function(name) {
+                if (!currentSession.hasOwnProperty(name)) {
+                    callbackStack.push({ prop: name, oldstate: previousSession[name], newstate: undefined });
+                }
+            });
+        }
 
-        //After all the changes have been applied, fire our events
-        callbackStack.forEach((function(item: mergeCallbackPayload) {
-            this.emit(item.prop, this, item.oldstate, item.newstate);
-            Model.emit(item.prop, this, item.oldstate, item.newstate);
-        }).bind(this));
+        //If, after all the changes have been applied, this new session is our "best" session,
+        //fire our change events.
+        //
+        //Otherwise, if this isn't the "best" session and one we should use for all-up reporting,
+        //then the changes aren't relevant and shouldn't be sent as notifications.
+        if (this.bestSessionId === currentSession.sid) {
+            callbackStack.forEach((function(item: mergeCallbackPayload) {
+                //But only if the state has changed. Otherwise the event is not really
+                //very useful, and, worse, it's very noisy in situations where you have
+                //multiple connected Client objects all updating the one true model
+                //registry with duplicated SESSIONSTATE events
+                if (item.oldstate !== item.newstate) {
+                    this.emit(item.prop, this, item.oldstate, item.newstate);
+                    Model.emit(item.prop, this, item.oldstate, item.newstate);
+                }
+            }).bind(this));
+        }
+
+        this.purgeOldSessions();
+    }
+
+    //Don't store sessions forever, older offline sessions will never
+    //be our "best" session and we won't use it for anything
+    private purgeOldSessions(): void {
+        let sids: Array<number> = (<any>Array).from(this.knownSessions.keys); //Session IDs will be in insertion order, first seen to latest (if the implementation follows the ECMAScript spec)
+        let that = this;
+        sids.forEach(function(sid) {
+            if (that.knownSessions.size === 1) {
+                //Only one known session. Even if it's offline, we don't want to purge it
+                return;
+            }
+            if (that.knownSessions.get(sid).vs === FCVIDEO.OFFLINE) {
+                that.knownSessions.delete(sid);
+            }
+        });
     }
 
     toString(): string {
@@ -181,11 +286,8 @@ class Model implements NodeJS.EventEmitter {
     }
 }
 
-interface mergeCallbackPayload { prop: string; oldstate: number|string|string[]; newstate: number|string|string[] };
+interface mergeCallbackPayload { prop: string; oldstate: number | string | string[]; newstate: number | string | string[] };
 
 applyMixins(Model, [EventEmitter]);
-
-// ExpandedModel is a Model with all the packet details merged at the top level already
-interface ExpandedModel extends Model, Message, UserDetailsMessage, ModelDetailsMessage, SessionDetailsMessage { }
 
 exports.Model = Model;

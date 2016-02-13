@@ -382,12 +382,10 @@ declare enum FCWOPT {
 declare var EventEmitter: any;
 declare class Model implements NodeJS.EventEmitter {
     uid: number;
-    [index: string]: any;
-    private client;
-    truepvt: number;
-    guests_muted: number;
-    basics_muted: number;
     tags: string[];
+    private client;
+    knownSessions: Map<number, any>;
+    lastKnownSessionId: number;
     addListener: (event: string, listener: Function) => NodeJS.EventEmitter;
     on: (event: string, listener: Function) => NodeJS.EventEmitter;
     once: (event: string, listener: Function) => NodeJS.EventEmitter;
@@ -407,17 +405,18 @@ declare class Model implements NodeJS.EventEmitter {
     static emit: (event: string, ...args: any[]) => boolean;
     private static knownModels;
     constructor(uid: number, packet?: Packet);
-    static getModel(id: any): ExpandedModel;
-    static findModels(filter: (model: ExpandedModel) => boolean): ExpandedModel[];
+    static getModel(id: any): Model;
+    static findModels(filter: (model: Model) => boolean): Model[];
+    bestSessionId: number;
+    bestSession: any;
     mergePacket(packet: Packet): void;
+    private purgeOldSessions();
     toString(): string;
 }
 interface mergeCallbackPayload {
     prop: string;
     oldstate: number | string | string[];
     newstate: number | string | string[];
-}
-interface ExpandedModel extends Model, Message, UserDetailsMessage, ModelDetailsMessage, SessionDetailsMessage {
 }
 
 interface escape {
@@ -438,7 +437,7 @@ declare class Packet {
     private _pMessage;
     private _chatString;
     constructor(client: Client, FCType: FCTYPE, nFrom: number, nTo: number, nArg1: number, nArg2: number, sPayload: number, sMessage: AnyMessage);
-    aboutModel: ExpandedModel;
+    aboutModel: Model;
     private _parseEmotes(msg);
     pMessage: string;
     chatString: string;
@@ -516,3 +515,34 @@ interface SessionDetailsMessage {
 declare function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) => string): void;
 declare function assert(condition: boolean, msg?: string, packet?: Packet): void;
 declare function applyMixins(derivedCtor: any, baseCtors: any[]): void;
+interface Map<K, V> {
+    clear(): void;
+    delete(key: K): boolean;
+    forEach(callbackfn: (value: V, index: K, map: Map<K, V>) => void, thisArg?: any): void;
+    get(key: K): V;
+    has(key: K): boolean;
+    set(key: K, value: V): Map<K, V>;
+    size: number;
+    values(): Array<V>;
+    keys(): Array<K>;
+    entries(): Array<Array<K | V>>;
+}
+declare var Map: {
+    new <K, V>(): Map<K, V>;
+    prototype: Map<any, any>;
+};
+interface Set<T> {
+    add(value: T): Set<T>;
+    clear(): void;
+    delete(value: T): boolean;
+    forEach(callbackfn: (value: T, index: T, set: Set<T>) => void, thisArg?: any): void;
+    has(value: T): boolean;
+    size: number;
+    values(): Array<T>;
+    keys(): Array<T>;
+    entries(): Array<Array<T>>;
+}
+declare var Set: {
+    new <T>(): Set<T>;
+    prototype: Set<any>;
+};

@@ -99,8 +99,9 @@ class Client implements NodeJS.EventEmitter {
         //If we're logged in as a user with friends, we'll get an initial dump of
         //ADDFRIEND packets for each friended user, whether they are online or not.
         //Those packets are essentially identical to SESSIONSTATE packets except for
-        //the nArg1 and nArg2 parameters. 
-        if (packet.FCType === FCTYPE.ADDFRIEND) {
+        //the nArg1 and nArg2 parameters.
+        //Also, only store model friends, so that we maintain Model being really only Models
+        if (packet.FCType === FCTYPE.ADDFRIEND && packet.sMessage !== undefined && (<Message>(packet.sMessage)).lv === 4) {
             var id = packet.nArg1; //For ADDFRIEND, nArg1 is the model id
             var payload = packet.sMessage;
             
