@@ -122,7 +122,8 @@ class Model implements NodeJS.EventEmitter {
 
         switch (packet.FCType) {
             case FCTYPE.SESSIONSTATE:
-                assert(this.uid === packet.nArg2, "Merging packet meant for a different model! (" + this.uid + " !== " + packet.nArg2 + ")", packet);
+            case FCTYPE.ADDFRIEND:
+                assert(this.uid === packet.nArg2 || this.uid === packet.nArg1, "Merging packet meant for a different model!", packet);
 
                 //This must be typed as any in order to iterate over its keys in a for-in
                 //It's real type is Message, but since my type definitions may be incomplete
