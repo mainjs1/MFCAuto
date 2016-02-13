@@ -30,6 +30,8 @@ declare class Client implements NodeJS.EventEmitter {
     private ensureEmoteParserIsLoaded(callback);
     private ensureServerConfigIsLoaded(callback);
     TxCmd(nType: FCTYPE, nTo?: number, nArg1?: number, nArg2?: number, sMsg?: string): void;
+    static toUserId(id: number): number;
+    static toRoomId(id: number): number;
     sendChat(id: number, msg: string, format?: boolean): void;
     sendPM(id: number, msg: string, format?: boolean): void;
     joinRoom(id: number): void;

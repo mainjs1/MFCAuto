@@ -7,7 +7,7 @@ var EventEmitter: any = require('events').EventEmitter;
 //which can be accessed via Model.getModel().
 //
 //Finally, Model emits events when the Model's state is changed.  This is best
-//explained via examples.  So see the readme and sample code in MFCAuto_Scripts.
+//explained via examples.  So see the readme.md
 class Model implements NodeJS.EventEmitter {
     uid: number;            //This Model's user id
     [index: string]: any;   //This instance will also serve as an expando dictionary for various properties

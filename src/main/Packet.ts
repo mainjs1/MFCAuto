@@ -52,9 +52,7 @@ class Packet {
                 }
             }
 
-            if (id > 100000000) {
-                id = id - 100000000;
-            }
+            id = Client.toUserId(id);
             this._aboutModel = Model.getModel(id);
         }
         return this._aboutModel;

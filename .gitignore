@@ -1,2 +1,4 @@
 node_modules/
 src/main/tsconfig.json
+src/test/packetLog.txt
+src/test/cred.txt

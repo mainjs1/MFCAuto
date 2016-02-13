@@ -96,6 +96,16 @@ class Client implements NodeJS.EventEmitter {
 
             Model.getModel(id).mergePacket(packet);
         }
+        //If we're logged in as a user with friends, we'll get an initial dump of
+        //ADDFRIEND packets for each friended user, whether they are online or not.
+        //Those packets are essentially identical to SESSIONSTATE packets except for
+        //the nArg1 and nArg2 parameters. 
+        if (packet.FCType === FCTYPE.ADDFRIEND) {
+            var id = packet.nArg1; //For ADDFRIEND, nArg1 is the model id
+            var payload = packet.sMessage;
+            
+            Model.getModel(id).mergePacket(packet);
+        }
         //And the same for tags updates
         if (packet.FCType === FCTYPE.TAGS) {
             var tagPayload: any = packet.sMessage;
@@ -181,7 +191,7 @@ class Client implements NodeJS.EventEmitter {
                 intParams[5], //nArg2
                 intParams[6], //sPayload
                 strParam2 //sMessage
-                ));
+            ));
 
             //If there's more to read, keep reading (which would be the case if the network sent >1 complete packet in a single transmission)
             if (pos < this.streamBuffer.length) {
@@ -306,8 +316,8 @@ class Client implements NodeJS.EventEmitter {
                 this.serverConfig = obj.serverConfig;
                 callback();
             }.bind(this), function(text) {
-                    return "var serverConfig = " + text;
-                });
+                return "var serverConfig = " + text;
+            });
         }
     }
 
@@ -337,6 +347,25 @@ class Client implements NodeJS.EventEmitter {
 
         this.client.write(buf);
     }
+    
+    //Takes a number that might be a user id or a room
+    //id and converts it to a user id (if necessary)
+    static toUserId(id: number): number {
+        if (id > 100000000) {
+            id = id - 100000000;
+        }
+        return id;
+    }
+
+    //Takes a number that might be a user id or a room
+    //id and converts it to a room id (if necessary)
+    static toRoomId(id: number): number {
+        if (id < 100000000) {
+            id = id + 100000000;
+        }
+        return id;
+    }
+
 
     //Send msg to the given model's chat room.  Set format to true
     //if this message contains any emotes.  Otherwise, you can save
@@ -355,10 +384,7 @@ class Client implements NodeJS.EventEmitter {
                 this.sendChat(id, parsedMsg, false);
             }.bind(this));
         } else {
-            //Convert a user ID to the corresponding room ID (unless it's already a room ID)
-            if (id < 100000000) {
-                id = id + 100000000;
-            }
+            id = Client.toRoomId(id);
             this.TxCmd(FCTYPE.CMESG, id, 0, 0, msg);
         }
     }
@@ -377,26 +403,20 @@ class Client implements NodeJS.EventEmitter {
                 this.sendPM(id, parsedMsg, false);
             }.bind(this));
         } else {
-            assert(id < 100000000, "You can't send a PM to a room.  Choose a specific user id.");
+            id = Client.toUserId(id);
             this.TxCmd(FCTYPE.PMESG, id, 0, 0, msg);
         }
     }
 
     //Joins the chat room of the given model
     joinRoom(id: number): void {
-        //Convert a user ID to the corresponding room ID (unless it's already a room ID)
-        if (id < 100000000) {
-            id = id + 100000000;
-        }
+        id = Client.toRoomId(id);
         this.TxCmd(FCTYPE.JOINCHAN, 0, id, FCCHAN.JOIN);
     }
 
     //Leaves the chat room of the given model
     leaveRoom(id: number): void {
-        //Convert a user ID to the corresponding room ID (unless it's already a room ID)
-        if (id < 100000000) {
-            id = id + 100000000;
-        }
+        id = Client.toRoomId(id);
         this.TxCmd(FCTYPE.JOINCHAN, 0, id, FCCHAN.PART); //@TODO - Confirm that this works, it's not been tested
     }
 
@@ -457,10 +477,29 @@ class Client implements NodeJS.EventEmitter {
     //Connects to MFC and logs in, just like this.connect(true),
     //but in this version the callback is not invoked immediately
     //on socket connection, but instead when the initial list of
-    //online models has been fully populated
-    connectAndWaitForModels(onConnect: () => void){
-        function modelListFinished(packet: Packet){
+    //online models has been fully populated.
+    //If you're logged in as a user with friended models, this will
+    //also wait until your friends list is completely loaded.
+    //@TODO - Check if anything else is needed to wait for 'bookmarked'
+    //models...
+    connectAndWaitForModels(onConnect: () => void) {
+        let completedModels = false;
+        let completedFriends = true;
+        function modelListFinished(packet: Packet) {
+            //nTo of 2 means these are metrics for friends
+            //nTo of 20 means these are metrics for online models in general
+            //nTo of 64 means something else that I'm not sure about, maybe region hidden models?
+            if(packet.nTo === 2){
+                if(packet.nArg1 !== packet.nArg2){
+                    completedFriends = false;
+                }else{
+                    completedFriends = true;
+                }
+            }
             if (packet.nTo === 20 && packet.nArg1 === packet.nArg2) {
+                completedModels = true;
+            }
+            if(completedModels && completedFriends){
                 this.removeListener("METRICS", modelListFinished);
                 onConnect();
             }

@@ -1,6 +1,8 @@
 /* jshint node: true, nonstandard: true, esversion: 6, indent: 4, undef: true, unused: true, bitwise: true, eqeqeq: true, latedef: true, trailing: true */
 /* globals describe, it, before */
-
+// To generate a test coverage report, from the root of the MFCAuto repo, run:
+//  istanbul cover .\node_modules\mocha\bin\_mocha ./src/test/test.js
+// That's assuming you have mocha installed locally and istanbul installed globally
 //@TODO - More response packet validation everywhere
 "use strict";
 let assert = require('assert');
