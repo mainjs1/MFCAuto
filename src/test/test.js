@@ -96,13 +96,18 @@ describe('Connected Scenarios', function () {
         });
 
         it("should be able to encode chat strings", function (done) {
-            client.EncodeRawChat("I am happy :mhappy", function (parsedString, aMsg2) {
+            let decodedString = "I am happy :mhappy";
+            client.EncodeRawChat(decodedString, function (parsedString, aMsg2) {
                 assert.strictEqual(aMsg2.length,2,"Unexpected number of emotes parsed");
                 assert.strictEqual(aMsg2[0], "I am happy ");
                 assert.strictEqual(aMsg2[1].txt,":mhappy");
                 assert.strictEqual(aMsg2[1].url,"http://www.myfreecams.com/chat_images/u/2c/2c9d2da6.gif");
                 assert.strictEqual(aMsg2[1].code,"#~ue,2c9d2da6.gif,mhappy~#");
                 assert.strictEqual(parsedString, "I am happy #~ue,2c9d2da6.gif,mhappy~#", "Encoding failed or returned an unexpected format");
+                
+                //And we should be able to decode that string back too
+                let packet = new mfc.Packet();
+                assert.strictEqual(decodedString, packet._parseEmotes(parsedString), "Failed to decode the emote string");
                 done();
             });
         });

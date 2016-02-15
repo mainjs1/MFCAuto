@@ -167,7 +167,7 @@ class Model implements NodeJS.EventEmitter {
             currentSessionId = (<Message>packet.sMessage).sid;
         }
         if (!this.knownSessions.has(currentSessionId)) {
-            this.knownSessions.set(currentSessionId, {});
+            this.knownSessions.set(currentSessionId, { sid: 0, vs: STATE.Offline });
         }
         let currentSession = this.knownSessions.get(currentSessionId);
 
@@ -238,7 +238,7 @@ class Model implements NodeJS.EventEmitter {
             if(this.bestSession.nm !== this.nm && this.bestSession.nm !== undefined){
                 //Promote any name changes to a top level property on this
                 //This is a mild concession to my .bestSession refactoring in
-                //MFCAuto 2.0.0, which fixing the primary break in most of my
+                //MFCAuto 2.0.0, which fixes the primary break in most of my
                 //scripts.
                 this.nm = this.bestSession.nm;
             }
@@ -263,7 +263,7 @@ class Model implements NodeJS.EventEmitter {
         let sids: Array<number> = (<any>Array).from(this.knownSessions.keys); //Session IDs will be in insertion order, first seen to latest (if the implementation follows the ECMAScript spec)
         let that = this;
         sids.forEach(function(sid) {
-            if (that.knownSessions.get(sid).vs === FCVIDEO.OFFLINE) {
+            if (that.knownSessions.get(sid).vs === undefined || that.knownSessions.get(sid).vs === FCVIDEO.OFFLINE) {
                 that.knownSessions.delete(sid);
             }
         });
