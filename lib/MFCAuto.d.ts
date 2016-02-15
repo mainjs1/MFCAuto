@@ -382,6 +382,7 @@ declare enum FCWOPT {
 declare var EventEmitter: any;
 declare class Model implements NodeJS.EventEmitter {
     uid: number;
+    nm: string;
     tags: string[];
     private client;
     knownSessions: Map<number, any>;

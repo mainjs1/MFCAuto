@@ -10,6 +10,7 @@ var EventEmitter: any = require('events').EventEmitter;
 //explained via examples.  So see the readme.md
 class Model implements NodeJS.EventEmitter {
     uid: number;    //This Model's user id
+    nm: string;     //The Model's name
     tags: string[] = []; //Tags are not session specific
     private client: Client;
 
@@ -102,8 +103,7 @@ class Model implements NodeJS.EventEmitter {
     //with the highest sessionid among non-offline sessions where
     //model software is being used.  Otherwise, pick the session
     //with the highest sessionid among all non-offline sessions.
-    //Otherwise, if all sessions are offline, pick the highest offline
-    //session id.
+    //Otherwise, if all sessions are offline, return 0.
     get bestSessionId(): number {
         let sessionIdToUse: number = 0;
         let foundModelSoftware: boolean = false;
@@ -128,13 +128,6 @@ class Model implements NodeJS.EventEmitter {
                 sessionIdToUse = sessionId;
             }
         });
-        if(sessionIdToUse === 0 && this.knownSessions.size > 0){
-            //There weren't any online sessions, but there were some offline sessions,
-            //return the highest numbered one we have... (Technically, I guess it would be
-            //better to return the one that went offline last, but I'm not sure it makes
-            //a big enough difference in practice)
-            sessionIdToUse = (<any>Array).from(this.knownSessions.keys)[this.knownSessions.size-1];
-        }
         return sessionIdToUse;
     }
 
@@ -145,7 +138,7 @@ class Model implements NodeJS.EventEmitter {
         }
         return session;
     }
-
+    
     //Merges a raw MFC packet into this model's state
     //
     //Also, there are a few bitmasks that are sent as part of the chat messages.
@@ -242,6 +235,13 @@ class Model implements NodeJS.EventEmitter {
         //Otherwise, if this isn't the "best" session and one we should use for all-up reporting,
         //then the changes aren't relevant and shouldn't be sent as notifications.
         if (this.bestSessionId === currentSession.sid) {
+            if(this.bestSession.nm !== this.nm && this.bestSession.nm !== undefined){
+                //Promote any name changes to a top level property on this
+                //This is a mild concession to my .bestSession refactoring in
+                //MFCAuto 2.0.0, which fixing the primary break in most of my
+                //scripts.
+                this.nm = this.bestSession.nm;
+            }
             callbackStack.forEach((function(item: mergeCallbackPayload) {
                 //But only if the state has changed. Otherwise the event is not really
                 //very useful, and, worse, it's very noisy in situations where you have
@@ -263,10 +263,6 @@ class Model implements NodeJS.EventEmitter {
         let sids: Array<number> = (<any>Array).from(this.knownSessions.keys); //Session IDs will be in insertion order, first seen to latest (if the implementation follows the ECMAScript spec)
         let that = this;
         sids.forEach(function(sid) {
-            if (that.knownSessions.size === 1) {
-                //Only one known session. Even if it's offline, we don't want to purge it
-                return;
-            }
             if (that.knownSessions.get(sid).vs === FCVIDEO.OFFLINE) {
                 that.knownSessions.delete(sid);
             }

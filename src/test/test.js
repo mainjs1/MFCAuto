@@ -65,6 +65,7 @@ describe('Connected Scenarios', function () {
             function callback(packet) {
                 //Check the contents, looking for known/unknown properties and validating the username //@TODO - @BUGBUG
                 assert.strictEqual(packet.sMessage.nm, queen.bestSession.nm);
+                assert.strictEqual(queen.nm, queen.bestSession.nm);
             
                 //Remove this listener and complete the test
                 client.removeListener("USERNAMELOOKUP", callback);
