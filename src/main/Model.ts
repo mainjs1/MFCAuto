@@ -30,7 +30,6 @@ class Model implements NodeJS.EventEmitter {
     //You should be using the .bestSession property to find the most correct
     //session for all-up status reporting.
     knownSessions: Map<number, any> = <Map<number, any>>new Map();
-    lastKnownSessionId: number;
 
     //Instance EventEmitter methods for this specific model.  These are used
     //like:  var m = new Model();  m.on(...);

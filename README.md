@@ -86,7 +86,7 @@ var client = new mfc.Client();
 
 mfc.Model.on("rc",function(model, oldstate, newstate){
     if((oldstate === undefined || oldstate < 1000) && newstate > 1000){
-        console.log(model.nm + " has passed 1000 viewers!");
+        console.log(model.bestSession.nm + " has passed 1000 viewers!");
     }
 });
 

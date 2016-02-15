@@ -385,7 +385,6 @@ declare class Model implements NodeJS.EventEmitter {
     tags: string[];
     private client;
     knownSessions: Map<number, any>;
-    lastKnownSessionId: number;
     addListener: (event: string, listener: Function) => NodeJS.EventEmitter;
     on: (event: string, listener: Function) => NodeJS.EventEmitter;
     once: (event: string, listener: Function) => NodeJS.EventEmitter;
