@@ -167,7 +167,7 @@ class Model implements NodeJS.EventEmitter {
             currentSessionId = (<Message>packet.sMessage).sid;
         }
         if (!this.knownSessions.has(currentSessionId)) {
-            this.knownSessions.set(currentSessionId, { sid: 0, vs: STATE.Offline });
+            this.knownSessions.set(currentSessionId, { sid: currentSessionId, vs: STATE.Offline });
         }
         let currentSession = this.knownSessions.get(currentSessionId);
 
