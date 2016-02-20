@@ -442,6 +442,12 @@ class Client implements NodeJS.EventEmitter {
                 }.bind(this));
                 this.client.on('end', function() {
                     this.log('Disconnected from MyFreeCams.  Reconnecting in 30 seconds...'); // Is 30 seconds reasonable?
+                    if(this.password==="guest" && this.username.startsWith("Guest")){
+                        //If we had a successful guest login before, we'll have changed
+                        //username to something like Guest12345 or whatever the server assigned
+                        //to us. That is not valid to log in again, so reset it back to guest.
+                        this.username = "guest";
+                    }
                     clearInterval(this.keepAlive);
                     setTimeout(this.connect.bind(this), 30000);
                 }.bind(this));
