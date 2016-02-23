@@ -449,6 +449,8 @@ class Client implements NodeJS.EventEmitter {
                         this.username = "guest";
                     }
                     clearInterval(this.keepAlive);
+                    this.streamBuffer = new Buffer(0);
+                    this.streamBufferPosition = 0;
                     setTimeout(this.connect.bind(this), 30000);
                 }.bind(this));
 
