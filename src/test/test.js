@@ -39,20 +39,11 @@ describe('Connected Scenarios', function () {
     let client = new mfc.Client();
     let queen;
     before(function (done) {
-        client.connectAndWaitForModels(function(){
+        client.connectAndWaitForModels(function () {
             //Find the most popular model in free chat right now
             let popularModels = mfc.Model.findModels((m) => m.bestSession.vs === 0);
             assert.notStrictEqual(popularModels.length, 0, "No models in public chat??? Is MFC down?");
-            popularModels.sort(function (a, b) {
-                if (a.bestSession.rc > b.bestSession.rc) {
-                    return 1;
-                }
-                if (a.bestSession.rc < b.bestSession.rc) {
-                    return -1;
-                }
-                return 0;
-            });
-
+            popularModels.sort((a, b) => a.bestSession.rc - b.bestSession.rc);
             queen = popularModels[popularModels.length - 1];
             done();
         });
@@ -98,11 +89,11 @@ describe('Connected Scenarios', function () {
         it("should be able to encode chat strings", function (done) {
             let decodedString = "I am happy :mhappy";
             client.EncodeRawChat(decodedString, function (parsedString, aMsg2) {
-                assert.strictEqual(aMsg2.length,2,"Unexpected number of emotes parsed");
+                assert.strictEqual(aMsg2.length, 2, "Unexpected number of emotes parsed");
                 assert.strictEqual(aMsg2[0], "I am happy ");
-                assert.strictEqual(aMsg2[1].txt,":mhappy");
-                assert.strictEqual(aMsg2[1].url,"http://www.myfreecams.com/chat_images/u/2c/2c9d2da6.gif");
-                assert.strictEqual(aMsg2[1].code,"#~ue,2c9d2da6.gif,mhappy~#");
+                assert.strictEqual(aMsg2[1].txt, ":mhappy");
+                assert.strictEqual(aMsg2[1].url, "http://www.myfreecams.com/chat_images/u/2c/2c9d2da6.gif");
+                assert.strictEqual(aMsg2[1].code, "#~ue,2c9d2da6.gif,mhappy~#");
                 assert.strictEqual(parsedString, "I am happy #~ue,2c9d2da6.gif,mhappy~#", "Encoding failed or returned an unexpected format");
                 
                 //And we should be able to decode that string back too
@@ -139,22 +130,26 @@ describe('Connected Scenarios', function () {
         set up a gulp test task and integrate it with VS Code
         */
     });
-    
-    describe("Model", function(){
+
+    describe("Model", function () {
         this.timeout(40000);
-        it("should be able to listen for a specific model state change", function(done){
-            mfc.Model.getModel(queen.uid).on("rc", function(model/*, oldstate, newstate*/){
-                assert.strictEqual(model.uid,queen.uid, "We got a callback for someone who isn't the top model?");
+        it("should be able to listen for a specific model state change", function (done) {
+            mfc.Model.getModel(queen.uid).on("rc", function (model/*, oldstate, newstate*/) {
+                assert.strictEqual(model.uid, queen.uid, "We got a callback for someone who isn't the top model?");
                 mfc.Model.getModel(queen.uid).removeAllListeners("rc");
                 done();
             });
         });
-        it("should be able to listen for global model state change events", function(done){
-            mfc.Model.on("rc", function(model/*, oldstate, newstate*/){
+        it("should be able to listen for global model state change events", function (done) {
+            mfc.Model.on("rc", function (model/*, oldstate, newstate*/) {
                 assert.notStrictEqual(model, undefined);
                 mfc.Model.removeAllListeners("rc");
                 done();
             });
+        });
+        it("should merge only models", function () {
+            let nonModels = mfc.Model.findModels((m) => m.bestSession.sid !== 0 && m.bestSession.lv !== 4);
+            assert.strictEqual(nonModels.length, 0);
         });
     });
 });

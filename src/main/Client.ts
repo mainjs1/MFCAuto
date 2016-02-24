@@ -1,4 +1,5 @@
 var EventEmitter: any = require('events').EventEmitter;
+var assert = require("assert");
 
 //Creates and maintains a TCP socket connection to MFC chat servers similar to
 //the way the Flash client connects and communicates with MFC.
@@ -76,45 +77,78 @@ class Client implements NodeJS.EventEmitter {
     private _packetReceived(packet: Packet): void {
         this.log(packet.toString(), true);
 
-        //Special case handling the login packet that gives your username and session ID
-        if (packet.FCType === FCTYPE.LOGIN) {
-            if (packet.nArg1 !== 0) {
-                this.log("Login failed for user '" + this.username + "' password '" + this.password + "'");
-                throw new Error("Login failed");
-            } else {
-                this.sessionId = packet.nTo;
-                this.uid = packet.nArg2;
-                this.username = <string>packet.sMessage;
-                this.log("Login handshake completed. Logged in as '" + this.username + "' with sessionId " + this.sessionId);
-            }
-        }
-
-        //Another special case for sessionstate updates, update our global user status tracking
-        if (packet.FCType === FCTYPE.SESSIONSTATE) {
-            var id = packet.nArg2; //For SESSIONSTATE, nArg2 is the model id
-            var payload = packet.sMessage;
-
-            Model.getModel(id).mergePacket(packet);
-        }
-        //If we're logged in as a user with friends, we'll get an initial dump of
-        //ADDFRIEND packets for each friended user, whether they are online or not.
-        //Those packets are essentially identical to SESSIONSTATE packets except for
-        //the nArg1 and nArg2 parameters.
-        //Also, only store model friends, so that we maintain Model being really only Models
-        if (packet.FCType === FCTYPE.ADDFRIEND && packet.sMessage !== undefined && (<Message>(packet.sMessage)).lv === 4) {
-            var id = packet.nArg1; //For ADDFRIEND, nArg1 is the model id
-            var payload = packet.sMessage;
-            
-            Model.getModel(id).mergePacket(packet);
-        }
-        //And the same for tags updates
-        if (packet.FCType === FCTYPE.TAGS) {
-            var tagPayload: any = packet.sMessage;
-            for (var key in tagPayload) {
-                if (tagPayload.hasOwnProperty(key)) {
-                    Model.getModel(key).mergePacket(packet);
+        //Special case some packets to update and maintain internal state
+        switch (packet.FCType) {
+            case FCTYPE.LOGIN:
+                //Store username and session id returned by the login response packet
+                if (packet.nArg1 !== 0) {
+                    this.log("Login failed for user '" + this.username + "' password '" + this.password + "'");
+                    throw new Error("Login failed");
+                } else {
+                    this.sessionId = packet.nTo;
+                    this.uid = packet.nArg2;
+                    this.username = <string>packet.sMessage;
+                    this.log("Login handshake completed. Logged in as '" + this.username + "' with sessionId " + this.sessionId);
                 }
-            }
+                break;
+            case FCTYPE.DETAILS:
+            case FCTYPE.ROOMHELPER:
+            case FCTYPE.SESSIONSTATE:
+            case FCTYPE.ADDFRIEND:
+            case FCTYPE.ADDIGNORE:
+            case FCTYPE.CMESG:
+            case FCTYPE.PMESG:
+            case FCTYPE.TXPROFILE:
+            case FCTYPE.USERNAMELOOKUP:
+            case FCTYPE.MYCAMSTATE:
+            case FCTYPE.MYWEBCAM:
+                //According to the site code, these packets can all trigger a user state update
+
+                //Except in these specific cases...
+                if ((packet.FCType === FCTYPE.DETAILS && packet.nFrom === FCTYPE.TOKENINC) ||
+                    (packet.FCType === FCTYPE.ROOMHELPER && packet.nArg2 < 100) ||
+                    (packet.FCType === FCTYPE.JOINCHAN && packet.nArg2 === FCCHAN.PART)) {
+                    break;
+                }
+            
+                //Ok, we're good, merge if there's anything to merge
+                if (packet.sMessage !== undefined) {
+                    let lv = (<Message>(packet.sMessage)).lv;
+                    let uid = (<Message>(packet.sMessage)).uid;
+                    //Sanity check that these packets always have uid (I don't know if they do yet...)
+                    assert.notStrictEqual(uid, undefined, packet.toString());
+                    //Only merge models (when we can tell). Unfortunately not every SESSIONSTATE
+                    //packet has a user level property. So this is no worse than we had been doing
+                    //before in terms of merging non-models...
+                    if (lv === undefined || lv === 4) {
+                        Model.getModel(uid).mergePacket(packet);
+                    }
+                }
+                break;
+            case FCTYPE.TAGS:
+                var tagPayload: any = packet.sMessage;
+                for (var key in tagPayload) {
+                    if (tagPayload.hasOwnProperty(key)) {
+                        Model.getModel(key).mergePacket(packet);
+                    }
+                }
+                break;
+            case FCTYPE.BOOKMARKS:
+                //@TODO - @BUGBUG - this can also trigger a model state update...
+                /*
+                    case FCTYPE_BOOKMARKS:
+                    {
+                        var hBookmarks = ParseJSON(decodeURIComponent(sPayload));
+                        if (hBookmarks.bookmarks) {
+                            for (var a = 0; a < hBookmarks.bookmarks.length; a++) {
+                                Bookmarks.hBookmarkedUsers[hBookmarks.bookmarks[a].uid] = true;
+                                if (!g_hUsers[hBookmarks.bookmarks[a].uid]) {
+                                    StoreUserHash(hBookmarks.bookmarks[a], {
+                */
+                // log(packet.toString());
+                // assert.fail("@TODO - We're not merging in bookmarks packets yet unfortunately...");
+                // process.exit(1);
+                break;
         }
 
         //Fire this packet's event for any listeners
@@ -242,7 +276,7 @@ class Client implements NodeJS.EventEmitter {
     }
 
     //Dynamically loads script code from MFC, massaging it with the given massager
-    //function first, and then passed the resulting instantiated object to the
+    //function first, and then passes the resulting instantiated object to the
     //given callback.
     //
     //We try to use this sparingly as it opens us up to breaks from site changes.
@@ -297,7 +331,7 @@ class Client implements NodeJS.EventEmitter {
                     //First, pull out only the ParseEmoteInput function
                     var startIndex = content.indexOf("function ParseEmoteInput()");
                     var endIndex = content.indexOf("function ParseEmoteOutput()");
-                    console.assert(startIndex !== -1 && endIndex !== -1 && startIndex < endIndex, "mfccore.js layout has changed, don't know what to do now");
+                    assert.ok(startIndex !== -1 && endIndex !== -1 && startIndex < endIndex, "mfccore.js layout has changed, don't know what to do now");
                     content = content.substr(startIndex, endIndex - startIndex);
 
                     //Then massage the function somewhat and prepend some prerequisites
@@ -442,15 +476,13 @@ class Client implements NodeJS.EventEmitter {
                 }.bind(this));
                 this.client.on('end', function() {
                     this.log('Disconnected from MyFreeCams.  Reconnecting in 30 seconds...'); // Is 30 seconds reasonable?
-                    if(this.password==="guest" && this.username.startsWith("Guest")){
+                    if (this.password === "guest" && this.username.startsWith("Guest")) {
                         //If we had a successful guest login before, we'll have changed
                         //username to something like Guest12345 or whatever the server assigned
                         //to us. That is not valid to log in again, so reset it back to guest.
                         this.username = "guest";
                     }
                     clearInterval(this.keepAlive);
-                    this.streamBuffer = new Buffer(0);
-                    this.streamBufferPosition = 0;
                     setTimeout(this.connect.bind(this), 30000);
                 }.bind(this));
 
@@ -498,17 +530,17 @@ class Client implements NodeJS.EventEmitter {
             //nTo of 2 means these are metrics for friends
             //nTo of 20 means these are metrics for online models in general
             //nTo of 64 means something else that I'm not sure about, maybe region hidden models?
-            if(packet.nTo === 2){
-                if(packet.nArg1 !== packet.nArg2){
+            if (packet.nTo === 2) {
+                if (packet.nArg1 !== packet.nArg2) {
                     completedFriends = false;
-                }else{
+                } else {
                     completedFriends = true;
                 }
             }
             if (packet.nTo === 20 && packet.nArg1 === packet.nArg2) {
                 completedModels = true;
             }
-            if(completedModels && completedFriends){
+            if (completedModels && completedFriends) {
                 this.removeListener("METRICS", modelListFinished);
                 onConnect();
             }

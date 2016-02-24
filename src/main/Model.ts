@@ -152,18 +152,18 @@ class Model implements NodeJS.EventEmitter {
 
         if (packet.FCType !== FCTYPE.TAGS && (packet.sMessage === undefined || (<Message>packet.sMessage).sid === undefined)) { //Should we keep sid of 0?  I guess yes
             //Without a session id, there's nothing we can merge.  True?  Will validate with the following assertion.
-            assert(packet.FCType !== FCTYPE.SESSIONSTATE && packet.FCType !== FCTYPE.ADDFRIEND, `We can have one of these without a session id?? ${packet.toString()}`);
+            assert.fail(`We can have one of these without a session id?? ${packet.toString()}`);
             return;
         }
         
         //Find the session being updated by this packet
         let previousSession = this.bestSession;
         let currentSessionId: number;
-        if(packet.FCType === FCTYPE.TAGS){
+        if (packet.FCType === FCTYPE.TAGS) {
             //Special case TAGS packets, because they don't contain a sessionID
             //So just fake that we're talking about the previously known best session
             currentSessionId = previousSession.sid;
-        }else{
+        } else {
             currentSessionId = (<Message>packet.sMessage).sid;
         }
         if (!this.knownSessions.has(currentSessionId)) {
@@ -175,16 +175,22 @@ class Model implements NodeJS.EventEmitter {
 
         //Merge the updates into the correct session
         switch (packet.FCType) {
-            case FCTYPE.SESSIONSTATE:
-            case FCTYPE.ADDFRIEND:
-                assert(this.uid === packet.nArg2 || this.uid === packet.nArg1, "Merging packet meant for a different model!", packet);
-                assert(packet.sMessage === undefined || (<Message>(packet.sMessage)).lv === undefined || (<Message>(packet.sMessage)).lv === 4, "Merging a non-model? Non-models need some special casing that is not currently implemented.");
-
+            case FCTYPE.TAGS:
+                var tagPayload: FCTypeTagsResponse = <FCTypeTagsResponse>packet.sMessage;
+                assert.notStrictEqual(tagPayload[this.uid], undefined, "This FCTYPE.TAGS messages doesn't appear to be about this model(" + this.uid + "): " + JSON.stringify(tagPayload));
+                callbackStack.push({ prop: "tags", oldstate: this.tags, newstate: (this.tags = this.tags.concat(tagPayload[this.uid])) });
+                //@TODO - Are tags incrementally added in updates or just given all at once in a single dump??  Not sure, for now
+                //we're always adding to any existing tags.  Have to watch if this causes tag duplication or not
+                break;
+            default:
                 //This must be typed as any in order to iterate over its keys in a for-in
                 //It's real type is Message, but since my type definitions may be incomplete
                 //and even if they are complete, MFC may add a new property, we need to
                 //iterate over all the keys.
                 var payload: any = packet.sMessage;
+                assert.notStrictEqual(payload, undefined);
+                assert.ok(payload.lv === undefined || payload.lv === 4, "Merging a non-model? Non-models need some special casing that is not currently implemented.");
+                assert.strictEqual(this.uid, payload.uid, "Merging a packet meant for a different model!: " + packet.toString());
 
                 for (var key in payload) {
                     //Rip out the sMessage.u|m|s properties and put them on the session at
@@ -207,15 +213,6 @@ class Model implements NodeJS.EventEmitter {
                     }
                 }
                 break;
-            case FCTYPE.TAGS:
-                var tagPayload: FCTypeTagsResponse = <FCTypeTagsResponse>packet.sMessage;
-                console.assert(tagPayload[this.uid] !== undefined, "This FCTYPE.TAGS messages doesn't appear to be about this model(" + this.uid + "): " + JSON.stringify(tagPayload));
-                callbackStack.push({ prop: "tags", oldstate: this.tags, newstate: (this.tags = this.tags.concat(tagPayload[this.uid])) });
-                //@TODO - Are tags incrementally added in updates or just given all at once in a single dump??  Not sure, for now
-                //we're always adding to any existing tags.  Have to watch if this causes tag duplication or not
-                break;
-            default:
-                throw ("Unknown packet type for: " + packet);
         }
         
         //If our "best" session has changed to a new session, the above
@@ -237,7 +234,7 @@ class Model implements NodeJS.EventEmitter {
         //session, if .bestSession is the fake sid===0 session, then this current session was the last
         //online session) then the changes aren't relevant and shouldn't be sent as notifications.
         if (this.bestSessionId === currentSession.sid || (this.bestSessionId === 0 && currentSession.sid !== 0)) {
-            if(this.bestSession.nm !== this.nm && this.bestSession.nm !== undefined){
+            if (this.bestSession.nm !== this.nm && this.bestSession.nm !== undefined) {
                 //Promote any name changes to a top level property on this
                 //This is a mild concession to my .bestSession refactoring in
                 //MFCAuto 2.0.0, which fixes the primary break in most of my

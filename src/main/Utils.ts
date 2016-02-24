@@ -1,6 +1,6 @@
 //Helper logging function that timestamps each message and optionally outputs to a file as well
 function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) => string): void {
-    assert(msg !== undefined, "Trying to print undefined.  This usually indicates a bug upstream from the log function.");
+    assert.notStrictEqual(msg, undefined, "Trying to print undefined.  This usually indicates a bug upstream from the log function.");
 
     //Pads single digit number with a leading zero, simple helper function for log2
     function toStr(n: number): string { return n < 10 ? '0' + n : '' + n; }
@@ -26,18 +26,6 @@ function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) =>
         var fd = fs.openSync(fileRoot + ".txt", "a"); //@TODO - Could create separate logs per date, or could just slam everything into one file...not sure what's best, but one file is easiest for the moment
         fs.writeSync(fd, taggedMsg + "\r\n");
         fs.closeSync(fd);
-    }
-}
-
-//Helper assertion function
-function assert(condition: boolean, msg?: string, packet?: Packet) {
-    if (!condition) {
-        msg = "ASSERT: " + msg;
-        if (packet !== undefined) {
-            msg = msg + " : " + packet;
-        }
-        log(msg);
-        throw msg;
     }
 }
 

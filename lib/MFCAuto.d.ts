@@ -1,4 +1,5 @@
 declare var EventEmitter: any;
+declare var assert: any;
 declare class Client implements NodeJS.EventEmitter {
     sessionId: number;
     username: string;
@@ -513,7 +514,6 @@ interface SessionDetailsMessage {
 }
 
 declare function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) => string): void;
-declare function assert(condition: boolean, msg?: string, packet?: Packet): void;
 declare function applyMixins(derivedCtor: any, baseCtors: any[]): void;
 interface Map<K, V> {
     clear(): void;

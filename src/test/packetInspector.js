@@ -37,18 +37,9 @@ client.on("ANY", function (packet) {
 
 client.connectAndWaitForModels(function () {
     //Find the most popular model in free chat right now
-    let freeModels = mfc.Model.findModels((m) => m.vs === 0);
-    freeModels.sort(function (a, b) {
-        if (a.rc > b.rc) {
-            return 1;
-        }
-        if (a.rc < b.rc) {
-            return -1;
-        }
-        return 0;
-    });
+    let freeModels = mfc.Model.findModels((m) => m.bestSession.vs === 0);
+    freeModels.sort((a, b) => a.bestSession.rc - b.bestSession.rc);
     let topModel = freeModels[freeModels.length - 1];
-    
     //Join her room for more interesting packets to inspect
     client.joinRoom(topModel.uid);
 });
