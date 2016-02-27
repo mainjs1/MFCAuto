@@ -36,14 +36,16 @@ class Model implements NodeJS.EventEmitter {
     //like:  var m = new Model();  m.on(...);
     //Note that these are not implemented here, we will mixin the correct
     //implementation after this class declaration.
-    addListener: (event: string, listener: Function) => NodeJS.EventEmitter;
-    on: (event: string, listener: Function) => NodeJS.EventEmitter;
-    once: (event: string, listener: Function) => NodeJS.EventEmitter;
-    removeListener: (event: string, listener: Function) => NodeJS.EventEmitter;
-    removeAllListeners: (event?: string) => NodeJS.EventEmitter;
-    setMaxListeners: (n: number) => void;
+    addListener: (event: string, listener: Function) => this;
+    on: (event: string, listener: Function) => this;
+    once: (event: string, listener: Function) => this;
+    removeListener: (event: string, listener: Function) => this;
+    removeAllListeners: (event?: string) => this;
+    getMaxListeners: () => number;
+    setMaxListeners: (n: number) => this;
     listeners: (event: string) => Function[];
     emit: (event: string, ...args: any[]) => boolean;
+    listenerCount: (type: string) => number;
 
     //EventEmitter object to be used for events firing for all models
     private static EventsForAllModels: NodeJS.EventEmitter = new EventEmitter();
@@ -55,9 +57,11 @@ class Model implements NodeJS.EventEmitter {
     static once = Model.EventsForAllModels.once;
     static removeListener = Model.EventsForAllModels.removeListener;
     static removeAllListeners = Model.EventsForAllModels.removeAllListeners;
+    static getMaxListeners = Model.EventsForAllModels.getMaxListeners;
     static setMaxListeners = Model.EventsForAllModels.setMaxListeners;
     static listeners = Model.EventsForAllModels.listeners;
     static emit = Model.EventsForAllModels.emit;
+    static listenerCount = Model.EventsForAllModels.listenerCount;
 
     //A registry of all known models that is built up as we receive
     //model information from the server.  This should not be accessed

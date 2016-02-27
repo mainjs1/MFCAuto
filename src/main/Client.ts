@@ -39,14 +39,16 @@ class Client implements NodeJS.EventEmitter {
     }
 
     //Instance EventEmitter methods
-    addListener: (event: string, listener: Function) => NodeJS.EventEmitter;
-    on: (event: string, listener: Function) => NodeJS.EventEmitter;
-    once: (event: string, listener: Function) => NodeJS.EventEmitter;
-    removeListener: (event: string, listener: Function) => NodeJS.EventEmitter;
-    removeAllListeners: (event?: string) => NodeJS.EventEmitter;
-    setMaxListeners: (n: number) => void;
+    addListener: (event: string, listener: Function) => this;
+    on: (event: string, listener: Function) => this;
+    once: (event: string, listener: Function) => this;
+    removeListener: (event: string, listener: Function) => this;
+    removeAllListeners: (event?: string) => this;
+    getMaxListeners: () => number;
+    setMaxListeners: (n: number) => this;
     listeners: (event: string) => Function[];
     emit: (event: string, ...args: any[]) => boolean;
+    listenerCount: (type: string) => number;
 
     //Simple helper log function that adds a timestamp and supports filtering 'debug' only messages
     private log(msg: string, debugOnly: boolean = false): void {
