@@ -154,12 +154,6 @@ class Model implements NodeJS.EventEmitter {
             this.client = packet.client;
         }
 
-        if (packet.FCType !== FCTYPE.TAGS && (packet.sMessage === undefined || (<Message>packet.sMessage).sid === undefined)) { //Should we keep sid of 0?  I guess yes
-            //Without a session id, there's nothing we can merge.  True?  Will validate with the following assertion.
-            assert.fail(`We can have one of these without a session id?? ${packet.toString()}`);
-            return;
-        }
-        
         //Find the session being updated by this packet
         let previousSession = this.bestSession;
         let currentSessionId: number;
@@ -168,7 +162,7 @@ class Model implements NodeJS.EventEmitter {
             //So just fake that we're talking about the previously known best session
             currentSessionId = previousSession.sid;
         } else {
-            currentSessionId = (<Message>packet.sMessage).sid;
+            currentSessionId = (<Message>packet.sMessage).sid || 0;
         }
         if (!this.knownSessions.has(currentSessionId)) {
             this.knownSessions.set(currentSessionId, { sid: currentSessionId, vs: STATE.Offline });
@@ -194,7 +188,7 @@ class Model implements NodeJS.EventEmitter {
                 var payload: any = packet.sMessage;
                 assert.notStrictEqual(payload, undefined);
                 assert.ok(payload.lv === undefined || payload.lv === 4, "Merging a non-model? Non-models need some special casing that is not currently implemented.");
-                assert.strictEqual(this.uid, payload.uid, "Merging a packet meant for a different model!: " + packet.toString());
+                assert.ok(payload.uid === undefined || this.uid === payload.uid, "Merging a packet meant for a different model!: " + packet.toString());
 
                 for (var key in payload) {
                     //Rip out the sMessage.u|m|s properties and put them on the session at
