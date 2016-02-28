@@ -188,7 +188,7 @@ class Model implements NodeJS.EventEmitter {
                 var payload: any = packet.sMessage;
                 assert.notStrictEqual(payload, undefined);
                 assert.ok(payload.lv === undefined || payload.lv === 4, "Merging a non-model? Non-models need some special casing that is not currently implemented.");
-                assert.ok(payload.uid === undefined || this.uid === payload.uid, "Merging a packet meant for a different model!: " + packet.toString());
+                assert.ok((payload.uid === undefined || this.uid === payload.uid) && packet.aboutModel.uid === this.uid, "Merging a packet meant for a different model!: " + packet.toString());
 
                 for (var key in payload) {
                     //Rip out the sMessage.u|m|s properties and put them on the session at

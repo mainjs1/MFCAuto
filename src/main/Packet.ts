@@ -37,24 +37,61 @@ class Packet {
     //Try to determine which model this packet is loosely "about"
     //meaning whose receiving the tip/chat/status update/etc
     get aboutModel(): Model {
-        //This whole method is black magic that may or may not be correct :)
         if (this._aboutModel === undefined) {
-            var id = -1;
-            if (this.nTo !== this.client.sessionId) {
-                id = this.nTo;
-            } else {
-                if (this.nArg2 > 1000) {
+            let id = -1;
+            switch (this.FCType) {
+                case FCTYPE.ADDFRIEND:
+                case FCTYPE.ADDIGNORE:
+                case FCTYPE.JOINCHAN:
+                case FCTYPE.STATUS:
+                case FCTYPE.CHATFLASH:
+                    id = this.nArg1;
+                    break;
+                case FCTYPE.SESSIONSTATE:
+                case FCTYPE.LISTCHAN:
                     id = this.nArg2;
-                } else {
-                    if (this.nArg1 > 1000) {
-                        id = this.nArg1;
+                    break;
+                case FCTYPE.USERNAMELOOKUP:
+                case FCTYPE.NEWSITEM:
+                case FCTYPE.PMESG:
+                    id = this.nFrom;
+                    break;
+                case FCTYPE.GUESTCOUNT:
+                case FCTYPE.TOKENINC:
+                case FCTYPE.CMESG:
+                    id = this.nTo;
+                    break;
+                case FCTYPE.ROOMDATA:
+                    let rdm = <RoomDataMessage>this.sMessage;
+                    if (rdm !== undefined && rdm.model !== undefined) {
+                        id = rdm.model;
                     }
-                }
+                    break;
+                case FCTYPE.LOGIN:
+                case FCTYPE.MODELGROUP:
+                case FCTYPE.PRIVACY:
+                case FCTYPE.DETAILS:
+                case FCTYPE.METRICS:
+                case FCTYPE.UEOPT:
+                case FCTYPE.SLAVEVSHARE:
+                case FCTYPE.INBOX:
+                case FCTYPE.EXTDATA:
+                case FCTYPE.MYWEBCAM:
+                case FCTYPE.TAGS:
+                case FCTYPE.NULL:
+                    //These cases don't have a direct mapping between packet and model.
+                    //either the mapping doesn't apply or this packet is about many models
+                    //potentially (like Tags packets)
+                    id = -1;
+                    break;
+                default:
+                    //@TODO - Fill in the rest of the cases as necessary
+                    //assert.fail(`Tried to retrieve an aboutModel for unknown packet type: ${this.toString()}`);
             }
-
             id = Client.toUserId(id);
             this._aboutModel = Model.getModel(id);
         }
+
         return this._aboutModel;
     }
 

@@ -132,8 +132,8 @@ describe('Connected Scenarios', function () {
     });
 
     describe("Model", function () {
-        this.timeout(40000);
-        it("should be able to listen for a specific model state change", function (done) {
+        this.timeout(60000);
+        it("should be able to listen for a specific model state change (this test frequently times out)", function (done) {
             mfc.Model.getModel(queen.uid).on("rc", function (model/*, oldstate, newstate*/) {
                 assert.strictEqual(model.uid, queen.uid, "We got a callback for someone who isn't the top model?");
                 mfc.Model.getModel(queen.uid).removeAllListeners("rc");

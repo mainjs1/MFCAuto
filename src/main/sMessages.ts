@@ -10,7 +10,7 @@ understanding of the MFC communication protocol.
 */
 
 //The AnyMessage union describes all possible sMessage types
-type AnyMessage = FCTypeLoginResponse|FCTypeSlaveVShareResponse|FCTypeTagsResponse|FCTokenIncResponse|Message;
+type AnyMessage = FCTypeLoginResponse|FCTypeSlaveVShareResponse|FCTypeTagsResponse|FCTokenIncResponse|RoomDataMessage|Message;
 
 type FCTypeLoginResponse = string; //After successfully logging in, a FCTYPE.LOGIN response is sent whose sMessage is your chat name as a plain string
 type FCTypeSlaveVShareResponse = number[]; //FCTYPE.SLAVEVSHARE messages contain this payload which I don't understand
@@ -27,6 +27,15 @@ interface FCTokenIncResponse { //FCTYPE.TOKENINC messages are received when some
     stamp: number;
     tokens: number; //The actual count of tokens tipped
     u: (number|string)[]; //Format is [###, ###, sender's name (or 'anonymous' for anon tips)]
+}
+
+interface RoomDataMessage {
+    countdown: boolean;
+    model: number;
+    sofar: number;
+    src: string;
+    topic: string;
+    total: number;
 }
 
 interface BaseMessage {
