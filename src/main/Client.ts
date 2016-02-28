@@ -118,7 +118,7 @@ class Client implements NodeJS.EventEmitter {
                     let lv = (<Message>(packet.sMessage)).lv;
                     let uid = (<Message>(packet.sMessage)).uid;
                     //Sanity check that these packets always have uid (I don't know if they do yet...)
-                    assert.notStrictEqual(uid, undefined, packet.toString());
+                    assert.notStrictEqual(uid, undefined, "packet.sMessage.uid is undefined? " + packet.toString());
                     //Only merge models (when we can tell). Unfortunately not every SESSIONSTATE
                     //packet has a user level property. So this is no worse than we had been doing
                     //before in terms of merging non-models...
