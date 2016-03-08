@@ -25,6 +25,7 @@ enum STATE {
 };
 
 enum DISPLAY {
+    'PM_INLINE_WHISPER' = 1,
     'PM_INLINE_ALL' = 2,
 };
 
@@ -68,12 +69,13 @@ enum FCCHAN {
     'PART' = 2,
     'ERR_NOCHANNEL' = 2,
     'ERR_NOTMEMBER' = 3,
-    'OLDMSG' = 4,
     'ERR_GUESTMUTE' = 4,
+    'OLDMSG' = 4,
     'ERR_GROUPMUTE' = 5,
     'ERR_NOTALLOWED' = 6,
     'ERR_CONTENT' = 7,
     'HISTORY' = 8,
+    'CAMSTATE' = 16,
     'LIST' = 16,
     'WELCOME' = 32,
     'BATCHPART' = 64,
@@ -83,6 +85,7 @@ enum FCCHAN {
 
 enum FCERRTYPE {
     'INVALIDUSER' = 10,
+    'NOACCESS' = 11,
     'NOSPACE' = 12,
 };
 
@@ -106,6 +109,7 @@ enum FCLEVEL {
 
 enum FCMODE {
     'NOPM' = 0,
+    'FRIENDPM' = 1,
     'ALLPM' = 2,
 };
 
@@ -123,8 +127,8 @@ enum FCNEWSOPT {
     'NONE' = 0,
     'IN_CHAN' = 1,
     'IN_PM' = 2,
-    'ADDFRIENDS_OFF' = 4,
     'AUTOFRIENDS_OFF' = 4,
+    'ADDFRIENDS_OFF' = 4,
     'IN_CHAN_NOPVT' = 8,
     'IN_CHAN_NOGRP' = 16,
 };
@@ -206,10 +210,12 @@ enum FCTYPE {
     'PRIVACY' = 8,
     'ADDFRIENDREQ' = 9,
     'USERNAMELOOKUP' = 10,
+    'ZBAN' = 11,
     'BROADCASTPROFILE' = 11,
     'BROADCASTNEWS' = 12,
     'ANNOUNCE' = 13,
     'MANAGELIST' = 14,
+    'MANAGELISTS' = 14,
     'INBOX' = 15,
     'GWCONNECT' = 16,
     'RELOADSETTINGS' = 17,
@@ -258,6 +264,7 @@ enum FCTYPE {
     'UNBAN' = 60,
     'SETWELCOME' = 61,
     'PERMABAN' = 62,
+    'CHANOP' = 62,
     'LISTCHAN' = 63,
     'TAGS' = 64,
     'SETPCODE' = 65,
@@ -277,20 +284,22 @@ enum FCTYPE {
     'STATEDUMP' = 79,
     'RECOMMEND' = 80,
     'EXTDATA' = 81,
+    'ZGWINVALID' = 95,
     'CONNECTING' = 96,
+    'CONNECTED' = 97,
     'DISCONNECTED' = 98,
     'LOGOUT' = 99,
 };
 
 enum FCUCR {
-    'CREATOR' = 0,
     'VM_LOUNGE' = 0,
+    'CREATOR' = 0,
     'VM_MYWEBCAM' = 1,
     'FRIENDS' = 1,
     'MODELS' = 2,
     'PREMIUMS' = 4,
-    'BASICS' = 8,
     'BASIC' = 8,
+    'BASICS' = 8,
     'ALL' = 15,
 };
 
@@ -322,6 +331,7 @@ enum FCVIDEO {
 
 enum FCWINDOW {
     'NO_USER_PM' = 20,
+    'OPTIONS_ADD_FRIEND' = 31,
     'OPTIONS_ADD_IGNORE' = 32,
 };
 
@@ -347,23 +357,31 @@ enum FCWOPT {
 };
 
 enum HIDE {
+    'MODEL_GROUPS_AWAY' = 1,
     'MODEL_GROUPS_PRIVATE' = 2,
+    'MODEL_GROUPS_GROUP' = 4,
     'MODEL_GROUPS_PUBLIC' = 8,
 };
 
 enum LOUNGE {
     'MASK_AUTO_CLICK' = 1,
+    'MASK_NO_CAMSNAPS' = 2,
     'MASK_LOUNGE_MODE' = 4,
 };
 
 enum MODEL {
     'LIST_ICON_NEW_MODEL' = 1,
+    'LIST_ICON_RECOMMEND' = 2,
     'LIST_ICON_POPULAR' = 4,
+    'LIST_ICON_RECENT' = 8,
     'LIST_ICON_MISSMFC' = 16,
+    'LIST_ICON_TRENDING' = 32,
 };
 
 enum MODELORDER {
+    'NONE' = 0,
     'PVT' = 1,
+    'TRUEPVT' = 2,
     'GRP' = 4,
 };
 
@@ -408,14 +426,19 @@ enum USEREXT {
 };
 
 enum WEBCAM {
+    'SECURITY_EVERYONE' = 0,
+    'SECURITY_FRIENDS' = 2,
     'SECURITY_MODELS' = 3,
     'SECURITY_MODELS_FRIENDS' = 4,
+    'SECURITY_ALLOWED' = 5,
 };
 
 enum WINDOW {
     'MODE_DEFAULT' = 0,
+    'MODE_DHTML' = 1,
     'MODE_DESKTOP_DHTML' = 1,
     'MODE_BROWSER' = 2,
+    'MODE_MOBILE_DHTML' = 2,
 };
 
 exports.DISPLAY = DISPLAY;

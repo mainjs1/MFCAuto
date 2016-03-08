@@ -2,7 +2,7 @@ import re
 from urllib.request import urlopen
 url = "http://www.myfreecams.com/_js/mfccore.js"
 # Maybe it's wrong to merge in the w. stuff?  Is that all just for the UI?
-constantRe = re.compile(r'(\s|;)(FCS|w)\.([A-Z0-9]+)_([A-Z0-9_]+)\s+?=\s+?([0-9]+);')
+constantRe = re.compile(r'(\s|;?|,)(FCS|w)\.([A-Z0-9]+)_([A-Z0-9_]+)\s+?=\s+?([0-9]+);')
 constantMap = dict()
  
 header = """//Various constants and enums used by MFC.  Most of these values can be seen here:

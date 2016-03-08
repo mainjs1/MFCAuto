@@ -44,6 +44,8 @@ As each Model's status is updated, the Model instance fires an event named after
 
 In this example, we are listening for changes in the Model's "vs" property, "vs" is short for "video state".  This field is what tracks the offline/on camera/away/in private/in group show status of each Model.  For all possible values of "video state" see the FCVIDEO enum in src/main/Constants.ts.
 
+Note: If logging room chat or status changes is your primary scenario, you may want to check out my [MFCLogger](https://github.com/ZombieAlex/MFCLogger) module.
+
 ```javascript
 var mfc = require("MFCAuto");
 var client = new mfc.Client();
@@ -85,7 +87,7 @@ var mfc = require("MFCAuto");
 var client = new mfc.Client();
 
 mfc.Model.on("rc",function(model, oldstate, newstate){
-    if((oldstate === undefined || oldstate < 1000) && newstate > 1000){
+    if((oldstate === undefined || oldstate < 1000) && newstate >= 1000){
         console.log(model.nm + " has passed 1000 viewers!");
     }
 });
