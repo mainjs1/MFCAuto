@@ -124,7 +124,7 @@ class Client implements NodeJS.EventEmitter {
                     //Only merge models (when we can tell). Unfortunately not every SESSIONSTATE
                     //packet has a user level property. So this is no worse than we had been doing
                     //before in terms of merging non-models...
-                    if (uid !== undefined && uid !== -1 && (lv === undefined || lv === 4)) {
+                    if (uid !== undefined && uid !== -1 && uid == packet.aboutModel.uid && (lv === undefined || lv === 4)) {
                         Model.getModel(uid).mergePacket(packet);
                     }
                 }
