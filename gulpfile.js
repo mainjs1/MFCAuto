@@ -16,7 +16,9 @@ gulp.task('build', function(){
             target: 'ES5',
             declarationFiles: true,
             noExternalResolve: true,
-            sortOutput: true
+            sortOutput: true,
+            sourceMap: true,
+            stripInternal: true
         }));
     var jsResult = gulp.src('src/main/*.js');
 

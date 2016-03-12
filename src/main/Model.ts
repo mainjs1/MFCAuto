@@ -1,3 +1,5 @@
+/// <reference path="../../typings/tsd.d.ts" />
+/* @internal */
 var EventEmitter: any = require('events').EventEmitter;
 
 //Model represents a single MFC model, or technically any MFC user whether or

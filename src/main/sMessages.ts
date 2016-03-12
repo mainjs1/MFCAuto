@@ -1,3 +1,4 @@
+/// <reference path="../../typings/tsd.d.ts" />
 /*
 The Packet class represents a complete message from the MFC chat server.  Many
 of those messages will contain an sMessage JSON payload.  The types in this file

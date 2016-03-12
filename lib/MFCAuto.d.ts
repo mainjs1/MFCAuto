@@ -1,5 +1,4 @@
-declare var EventEmitter: any;
-declare var assert: any;
+
 declare class Client implements NodeJS.EventEmitter {
     sessionId: number;
     username: string;
@@ -460,7 +459,7 @@ declare enum WINDOW {
     'MODE_MOBILE_DHTML' = 2,
 }
 
-declare var EventEmitter: any;
+
 declare class Model implements NodeJS.EventEmitter {
     uid: number;
     nm: string;
@@ -504,11 +503,7 @@ interface mergeCallbackPayload {
     newstate: number | string | string[];
 }
 
-interface escape {
-    (text: string): string;
-}
-declare var escape: escape;
-declare var unescape: escape;
+
 declare class Packet {
     client: Client;
     FCType: FCTYPE;
@@ -528,6 +523,7 @@ declare class Packet {
     chatString: string;
     toString(): string;
 }
+
 
 declare type AnyMessage = FCTypeLoginResponse | FCTypeSlaveVShareResponse | FCTypeTagsResponse | FCTokenIncResponse | RoomDataMessage | Message;
 declare type FCTypeLoginResponse = string;
@@ -604,6 +600,7 @@ interface SessionDetailsMessage {
     rp: number;
     tk: number;
 }
+
 
 declare function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) => string): void;
 declare function applyMixins(derivedCtor: any, baseCtors: any[]): void;

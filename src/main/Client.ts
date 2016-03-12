@@ -1,4 +1,7 @@
+/// <reference path="../../typings/tsd.d.ts" />
+/* @internal */
 var EventEmitter: any = require('events').EventEmitter;
+/* @internal */
 var assert = require("assert");
 
 //Creates and maintains a TCP socket connection to MFC chat servers similar to

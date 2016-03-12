@@ -1,8 +1,12 @@
+/// <reference path="../../typings/tsd.d.ts" />
 //Forward definitions for the TypeScript compiler
+/* @internal */
 interface escape {
     (text: string): string;
 }
+/* @internal */
 declare var escape: escape;
+/* @internal */
 declare var unescape: escape;
 
 
