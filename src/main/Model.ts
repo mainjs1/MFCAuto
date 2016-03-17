@@ -82,12 +82,14 @@ class Model implements NodeJS.EventEmitter {
 
     //Retrieves a specific model instance by user id from knownModels, creating
     //the model instance if it does not already exist.
-    static getModel(id: any): Model {
+    static getModel(id: any, createIfNecessary: boolean = true): Model {
         if (typeof id === 'string') id = parseInt(id);
-        Model.knownModels[id] = Model.knownModels[id] || <Model>(new Model(id));
+        if (createIfNecessary) {
+            Model.knownModels[id] = Model.knownModels[id] || <Model>(new Model(id));
+        }
         return Model.knownModels[id];
     }
-    
+
     //Retrieves a list of models matching the given filter.
     static findModels(filter: (model: Model) => boolean): Model[] {
         let models: Model[] = [];
@@ -102,7 +104,7 @@ class Model implements NodeJS.EventEmitter {
 
         return models;
     }
-    
+
     //Similar to MfcSessionManager.prototype.determineBestSession
     //picks the most 'correct' session to use for reporting model status
     //Basically, if model software is being used, pick the session
@@ -144,7 +146,7 @@ class Model implements NodeJS.EventEmitter {
         }
         return session;
     }
-    
+
     //Merges a raw MFC packet into this model's state
     //
     //Also, there are a few bitmasks that are sent as part of the chat messages.
@@ -190,7 +192,7 @@ class Model implements NodeJS.EventEmitter {
                 var payload: any = packet.sMessage;
                 assert.notStrictEqual(payload, undefined);
                 assert.ok(payload.lv === undefined || payload.lv === 4, "Merging a non-model? Non-models need some special casing that is not currently implemented.");
-                assert.ok((payload.uid === undefined || this.uid === payload.uid) && packet.aboutModel.uid === this.uid, "Merging a packet meant for a different model!: " + packet.toString());
+                assert.ok((payload.uid !== undefined && this.uid === payload.uid) || packet.aboutModel.uid === this.uid, "Merging a packet meant for a different model!: " + packet.toString());
 
                 for (var key in payload) {
                     //Rip out the sMessage.u|m|s properties and put them on the session at
@@ -214,7 +216,7 @@ class Model implements NodeJS.EventEmitter {
                 }
                 break;
         }
-        
+
         //If our "best" session has changed to a new session, the above
         //will capture any changed or added properties, but not the removed
         //properties, so we'll add callbacks for removed properties here...

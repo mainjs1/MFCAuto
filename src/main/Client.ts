@@ -115,20 +115,26 @@ class Client implements NodeJS.EventEmitter {
                     (packet.FCType === FCTYPE.JOINCHAN && packet.nArg2 === FCCHAN.PART)) {
                     break;
                 }
-            
+
                 //Ok, we're good, merge if there's anything to merge
                 if (packet.sMessage !== undefined) {
                     let lv = (<Message>(packet.sMessage)).lv;
                     let uid = (<Message>(packet.sMessage)).uid;
-                    if(uid === undefined){
+                    if (uid === undefined) {
                         uid = packet.aboutModel.uid;
                     }
-                    
+
                     //Only merge models (when we can tell). Unfortunately not every SESSIONSTATE
                     //packet has a user level property. So this is no worse than we had been doing
                     //before in terms of merging non-models...
-                    if (uid !== undefined && uid !== -1 && uid == packet.aboutModel.uid && (lv === undefined || lv === 4)) {
-                        Model.getModel(uid).mergePacket(packet);
+                    if (uid !== undefined && uid !== -1 && (lv === undefined || lv === 4)) {
+                        //If we know this is a model, get her instance and create it
+                        //if it does not exist.  Otherwise, don't create an instance
+                        //for someone that might not be a mdoel.
+                        let possibleModel = Model.getModel(uid, lv === 4);
+                        if (possibleModel !== undefined) {
+                            possibleModel.mergePacket(packet);
+                        }
                     }
                 }
                 break;
@@ -389,7 +395,7 @@ class Client implements NodeJS.EventEmitter {
 
         this.client.write(buf);
     }
-    
+
     //Takes a number that might be a user id or a room
     //id and converts it to a user id (if necessary)
     static toUserId(id: number): number {
@@ -521,7 +527,7 @@ class Client implements NodeJS.EventEmitter {
         }
         this.TxCmd(FCTYPE.LOGIN, 0, 20071025, 0, this.username + ":" + this.password);
     }
-    
+
     //Connects to MFC and logs in, just like this.connect(true),
     //but in this version the callback is not invoked immediately
     //on socket connection, but instead when the initial list of

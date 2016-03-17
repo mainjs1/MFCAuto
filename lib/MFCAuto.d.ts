@@ -489,7 +489,7 @@ declare class Model implements NodeJS.EventEmitter {
     static listenerCount: (type: string) => number;
     private static knownModels;
     constructor(uid: number, packet?: Packet);
-    static getModel(id: any): Model;
+    static getModel(id: any, createIfNecessary?: boolean): Model;
     static findModels(filter: (model: Model) => boolean): Model[];
     bestSessionId: number;
     bestSession: any;
