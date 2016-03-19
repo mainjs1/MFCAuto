@@ -1,4 +1,3 @@
-/// <reference path="../../typings/tsd.d.ts" />
 //Helper logging function that timestamps each message and optionally outputs to a file as well
 function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) => string): void {
     assert.notStrictEqual(msg, undefined, "Trying to print undefined.  This usually indicates a bug upstream from the log function.");

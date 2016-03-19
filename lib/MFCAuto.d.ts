@@ -1,4 +1,3 @@
-
 declare class Client implements NodeJS.EventEmitter {
     sessionId: number;
     username: string;
@@ -62,7 +61,6 @@ interface ServerConfig {
         [index: string]: string;
     };
 }
-
 declare var MAGIC: number;
 declare enum STATE {
     FreeChat = 0,
@@ -458,8 +456,6 @@ declare enum WINDOW {
     'MODE_BROWSER' = 2,
     'MODE_MOBILE_DHTML' = 2,
 }
-
-
 declare class Model implements NodeJS.EventEmitter {
     uid: number;
     nm: string;
@@ -502,8 +498,6 @@ interface mergeCallbackPayload {
     oldstate: number | string | string[];
     newstate: number | string | string[];
 }
-
-
 declare class Packet {
     client: Client;
     FCType: FCTYPE;
@@ -523,8 +517,6 @@ declare class Packet {
     chatString: string;
     toString(): string;
 }
-
-
 declare type AnyMessage = FCTypeLoginResponse | FCTypeSlaveVShareResponse | FCTypeTagsResponse | FCTokenIncResponse | RoomDataMessage | Message;
 declare type FCTypeLoginResponse = string;
 declare type FCTypeSlaveVShareResponse = number[];
@@ -600,8 +592,6 @@ interface SessionDetailsMessage {
     rp: number;
     tk: number;
 }
-
-
 declare function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) => string): void;
 declare function applyMixins(derivedCtor: any, baseCtors: any[]): void;
 interface Map<K, V> {

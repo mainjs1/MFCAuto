@@ -1,4 +1,3 @@
-/// <reference path="../../typings/tsd.d.ts" />
 /* @internal */
 var EventEmitter: any = require('events').EventEmitter;
 /* @internal */

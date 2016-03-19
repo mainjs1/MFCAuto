@@ -1,4 +1,3 @@
-/// <reference path="../../typings/tsd.d.ts" />
 //Forward definitions for the TypeScript compiler
 /* @internal */
 interface escape {

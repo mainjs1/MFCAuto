@@ -32,7 +32,7 @@ if (fs.existsSync(cred)) {
 let client = new mfc.Client(user, pass);
 
 client.on("ANY", function (packet) {
-    log(packet.toString(), "packetLog");
+    log(packet.toString(), "packetLog", null);
 });
 
 client.connectAndWaitForModels(function () {
