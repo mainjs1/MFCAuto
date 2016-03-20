@@ -461,7 +461,7 @@ declare class Model implements NodeJS.EventEmitter {
     nm: string;
     tags: string[];
     private client;
-    knownSessions: Map<number, any>;
+    knownSessions: Map<number, ModelSessionDetails>;
     addListener: (event: string, listener: Function) => this;
     on: (event: string, listener: Function) => this;
     once: (event: string, listener: Function) => this;
@@ -488,15 +488,22 @@ declare class Model implements NodeJS.EventEmitter {
     static getModel(id: any, createIfNecessary?: boolean): Model;
     static findModels(filter: (model: Model) => boolean): Model[];
     bestSessionId: number;
-    bestSession: any;
+    bestSession: ModelSessionDetails;
     mergePacket(packet: Packet): void;
     private purgeOldSessions();
     toString(): string;
 }
 interface mergeCallbackPayload {
     prop: string;
-    oldstate: number | string | string[];
-    newstate: number | string | string[];
+    oldstate: number | string | string[] | boolean;
+    newstate: number | string | string[] | boolean;
+}
+interface ModelSessionDetails extends BaseMessage, ModelDetailsMessage, UserDetailsMessage, SessionDetailsMessage {
+    model_sw?: number;
+    truepvt?: number;
+    guests_muted?: number;
+    basics_muted?: number;
+    [index: string]: number | string | boolean;
 }
 declare class Packet {
     client: Client;
@@ -547,7 +554,6 @@ interface BaseMessage {
     nm?: string;
     vs?: number;
     msg?: string;
-    tokens?: number;
 }
 interface Message extends BaseMessage {
     u?: UserDetailsMessage;
@@ -586,11 +592,11 @@ interface UserDetailsMessage {
     profile?: number;
 }
 interface SessionDetailsMessage {
-    ga2: string;
-    gst: string;
-    ip: string;
-    rp: number;
-    tk: number;
+    ga2?: string;
+    gst?: string;
+    ip?: string;
+    rp?: number;
+    tk?: number;
 }
 declare function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) => string): void;
 declare function applyMixins(derivedCtor: any, baseCtors: any[]): void;

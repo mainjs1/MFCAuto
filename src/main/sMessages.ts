@@ -45,7 +45,6 @@ interface BaseMessage {
     nm?: string;    //User name for chat
     vs?: number;    //State (hmm, does "VS" stand for "video state"?  Maybe, that might make sense.)
     msg?: string;   //The text of any chat message or PM if this is a CMESG or PMESG FCType
-    tokens?: number; //@TODO @BUGBUG is this really there????  Check packetlog....
 }
 
 
@@ -97,9 +96,9 @@ interface UserDetailsMessage {
 //useful tokens remaining, 'tk', and reward point, 'rp', values if you're logged
 //in as a premium user
 interface SessionDetailsMessage {
-    ga2: string;    //As a guest, this is always the empty string ""
-    gst: string;    //As a guest, this is always the empty string ""
-    ip: string;     //As a guest, this is always the string "0.0.0.0"
-    rp: number;     //As a guest, this is always 0
-    tk: number;     //As a guest, this is always 0
+    ga2?: string;    //As a guest, this is always the empty string ""
+    gst?: string;    //As a guest, this is always the empty string ""
+    ip?: string;     //As a guest, this is always the string "0.0.0.0"
+    rp?: number;     //As a guest, this is always 0
+    tk?: number;     //As a guest, this is always 0
 }

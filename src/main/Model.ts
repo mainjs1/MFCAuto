@@ -31,7 +31,7 @@ class Model implements NodeJS.EventEmitter {
     //
     //You should be using the .bestSession property to find the most correct
     //session for all-up status reporting.
-    knownSessions: Map<number, any> = <Map<number, any>>new Map();
+    knownSessions: Map<number, ModelSessionDetails> = <Map<number, ModelSessionDetails>>new Map();
 
     //Instance EventEmitter methods for this specific model.  These are used
     //like:  var m = new Model();  m.on(...);
@@ -138,10 +138,10 @@ class Model implements NodeJS.EventEmitter {
         return sessionIdToUse;
     }
 
-    get bestSession(): any { //@TODO - Make this a strong type where possible
+    get bestSession(): ModelSessionDetails {
         let session = this.knownSessions.get(this.bestSessionId);
         if (session === undefined) {
-            session = { sid: 0, vs: STATE.Offline };
+            session = { sid: 0, uid: this.uid, vs: STATE.Offline };
         }
         return session;
     }
@@ -168,7 +168,7 @@ class Model implements NodeJS.EventEmitter {
             currentSessionId = (<Message>packet.sMessage).sid || 0;
         }
         if (!this.knownSessions.has(currentSessionId)) {
-            this.knownSessions.set(currentSessionId, { sid: currentSessionId, vs: STATE.Offline });
+            this.knownSessions.set(currentSessionId, { sid: currentSessionId, uid: this.uid, vs: STATE.Offline });
         }
         let currentSession = this.knownSessions.get(currentSessionId);
 
@@ -281,7 +281,14 @@ class Model implements NodeJS.EventEmitter {
     }
 }
 
-interface mergeCallbackPayload { prop: string; oldstate: number | string | string[]; newstate: number | string | string[] };
+interface mergeCallbackPayload { prop: string; oldstate: number | string | string[] | boolean; newstate: number | string | string[] | boolean };
+interface ModelSessionDetails extends BaseMessage, ModelDetailsMessage, UserDetailsMessage, SessionDetailsMessage {
+    model_sw?: number;
+    truepvt?: number;
+    guests_muted?: number;
+    basics_muted?: number;
+    [index: string]: number|string|boolean;
+}
 
 applyMixins(Model, [EventEmitter]);
 

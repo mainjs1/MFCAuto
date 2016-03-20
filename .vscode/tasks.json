@@ -18,8 +18,8 @@
 	// The command is a shell script
 	"isShellCommand": true,
 
-	// Show the output window only if unrecognized errors occur.
-	"showOutput": "silent",
+	// Show the output window always
+	"showOutput": "always",
 
 	// Tell the tsc compiler to use the tsconfig.json from the open folder.
 	"args": ["-p", "${workspaceRoot}"],

@@ -48,6 +48,7 @@ class Packet {
                 case FCTYPE.JOINCHAN:
                 case FCTYPE.STATUS:
                 case FCTYPE.CHATFLASH:
+                case FCTYPE.BROADCASTPROFILE:
                     id = this.nArg1;
                     break;
                 case FCTYPE.SESSIONSTATE:
