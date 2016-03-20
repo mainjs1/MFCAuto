@@ -6,6 +6,8 @@ Beyond exposing the communication protocol, MFCAuto.js provides several useful a
 
 While MFCAuto.js was developed entirely independently, at its core it is similar to [KradekMFC](https://github.com/KradekMFC)'s excellent [MFCSocket](https://github.com/KradekMFC/MFCSocket) module.
 
+Here are some examples of how you might use MFCAuto.js.  [More complete API documentation can be found here](https://github.com/ZombieAlex/MFCAuto/tree/master/src/main) or by reviewing the source in the same folder directly.
+
 ------------
 
 ##Examples
@@ -118,4 +120,3 @@ client.connect();
 
 -----------------------
 
-####For API documentation, you can review the source in src/main.  It is heavily commented TypeScript.
