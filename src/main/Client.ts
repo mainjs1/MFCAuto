@@ -19,6 +19,7 @@ class Client implements NodeJS.EventEmitter {
     private emoteParser: EmoteParser;
     private client: any;
     private keepAlive: NodeJS.Timer;
+    private manualDisconnect: boolean;
 
     //By default, this client will log in as a guest.
     //
@@ -38,6 +39,7 @@ class Client implements NodeJS.EventEmitter {
         this.sessionId = 0;
         this.streamBuffer = new Buffer(0);
         this.streamBufferPosition = 0;
+        this.manualDisconnect = false;
     }
 
     //Instance EventEmitter methods
@@ -487,15 +489,19 @@ class Client implements NodeJS.EventEmitter {
                     this._readData(data);
                 }.bind(this));
                 this.client.on('end', function() {
-                    this.log('Disconnected from MyFreeCams.  Reconnecting in 30 seconds...'); // Is 30 seconds reasonable?
+                    clearInterval(this.keepAlive);
                     if (this.password === "guest" && this.username.startsWith("Guest")) {
                         //If we had a successful guest login before, we'll have changed
                         //username to something like Guest12345 or whatever the server assigned
                         //to us. That is not valid to log in again, so reset it back to guest.
                         this.username = "guest";
                     }
-                    clearInterval(this.keepAlive);
-                    setTimeout(this.connect.bind(this), 30000);
+                    if (!this.manualDisconnect) {
+                        this.log('Disconnected from MyFreeCams.  Reconnecting in 30 seconds...'); // Is 30 seconds reasonable?
+                        setTimeout(this.connect.bind(this), 30000);
+                    } else {
+                        this.manualDisconnect = false;
+                    }
                 }.bind(this));
 
                 //Connecting without logging in is the rarer case, so make the default to log in
@@ -512,8 +518,6 @@ class Client implements NodeJS.EventEmitter {
 
         }.bind(this));
     }
-
-    //@TODO - Do we need a logout method?
 
     //Logs in to MFC.  This should only be called after Client connect(false);
     //See the comment on Client's constructor for details on the password to use.
@@ -559,6 +563,18 @@ class Client implements NodeJS.EventEmitter {
         }
         this.on("METRICS", modelListFinished.bind(this));
         this.connect(true);
+    }
+
+    //Disconnects by closing the socket. There may be
+    //more graceful ways of doing this, involving sending
+    //some kind of logout message to the server or something
+    //but whatever
+    disconnect(): void {
+        if (this.client !== undefined) {
+            this.manualDisconnect = true;
+            this.client.end();
+            this.client = undefined;
+        }
     }
 }
 applyMixins(Client, [EventEmitter]);

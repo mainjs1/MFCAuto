@@ -1,8 +1,6 @@
 # MFCAuto API Reference
 ## Client class
 
----
-
 ### constructor(username: string = "guest", password: string = "guest")
 Creates a Client instance with the given credentials, or with guest credentials by default.  [See my comment here if you wish to log in with a real account.](https://github.com/ZombieAlex/MFCAuto/blob/master/src/main/Client.ts#L23)
 
@@ -34,6 +32,11 @@ client.connectAndWaitForModels(() => {
 });
 ```
 This method always logs in, because MFC servers won't send information for all online models until you've logged as at least a guest.
+
+---
+
+### disconnect(): void
+Disconnects a connected client. If the connected socket was the only thing keeping the NodeJS event loop alive, this will have the side-effect of ending the program.
 
 ---
 
@@ -86,8 +89,6 @@ If your message contains emotes, set format to true.  It is safe to always set f
 ---
 
 ## Model class
-
----
 
 ### static getModel(id: number): Model
 Retrieves the Model instance matching a specific model ID.  Never create a model instance directly, use this method instead.

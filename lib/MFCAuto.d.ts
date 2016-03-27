@@ -11,6 +11,7 @@ declare class Client implements NodeJS.EventEmitter {
     private emoteParser;
     private client;
     private keepAlive;
+    private manualDisconnect;
     constructor(username?: string, password?: string);
     addListener: (event: string, listener: Function) => this;
     on: (event: string, listener: Function) => this;
@@ -40,6 +41,7 @@ declare class Client implements NodeJS.EventEmitter {
     connect(doLogin?: boolean, onConnect?: () => void): void;
     login(username?: string, password?: string): void;
     connectAndWaitForModels(onConnect: () => void): void;
+    disconnect(): void;
 }
 declare type EmoteParserCallback = (parsedString: string, aMsg2: {
     txt: string;
