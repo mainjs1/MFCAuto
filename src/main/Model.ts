@@ -252,6 +252,16 @@ class Model implements NodeJS.EventEmitter {
                     Model.emit(item.prop, this, item.oldstate, item.newstate);
                 }
             }).bind(this));
+
+            //Also fire a generic ANY event signifying an generic update. This
+            //event has different callback arguments than the other Model events,
+            //it receives this model instance and the packet that changed the
+            //instance.
+            this.emit("ANY", this, packet);
+            Model.emit("ANY", this, packet);
+
+            //And also process any registered .when callbacks
+            this.processWhens(packet);
         }
 
         this.purgeOldSessions();
@@ -269,6 +279,49 @@ class Model implements NodeJS.EventEmitter {
         });
     }
 
+    private static whenMap: Map<whenFilter, whenMapEntry> = <Map<whenFilter, whenMapEntry>>new Map();
+    //Registers an onTrue method to be called whenever condition returns true for any model
+    //and, optionally, an onFalseAfterTrue method to be called when condition had been true
+    //previously but is no longer true
+    static when(condition: whenFilter, onTrue: whenCallback, onFalseAfterTrue: whenCallback = null): void {
+        Model.whenMap.set(condition, { onTrue: onTrue, onFalseAfterTrue: onFalseAfterTrue, matchedSet: <Set<number>>new Set() });
+    }
+    static removeWhen(condition: (m: Model) => boolean): boolean {
+        return Model.whenMap.delete(condition);
+    }
+
+    private whenMap: Map<whenFilter, whenMapEntry> = <Map<whenFilter, whenMapEntry>>new Map();
+    //Registers an onTrue method to be called whenever condition returns true for this model
+    //and, optionally, an onFalseAfterTrue method to be called when condition had been true
+    //previously but is no longer true
+    when(condition: whenFilter, onTrue: whenCallback, onFalseAfterTrue: whenCallback = null): void {
+        this.whenMap.set(condition, { onTrue: onTrue, onFalseAfterTrue: onFalseAfterTrue, matchedSet: <Set<number>>new Set() });
+        this.processWhens(null);
+    }
+    removeWhen(condition: (m: Model) => boolean): boolean {
+        return this.whenMap.delete(condition);
+    }
+
+    private processWhens(packet: Packet): void {
+        let processor = (actions: whenMapEntry, condition: whenFilter) => {
+            if (condition(this)) {
+                //Only if we weren't previously matching this condition
+                if (!actions.matchedSet.has(this.uid)) {
+                    actions.matchedSet.add(this.uid);
+                    actions.onTrue(this, packet);
+                }
+            } else {
+                //Only if we were previously matching this condition
+                //and we have an onFalseAfterTrue callback
+                if (actions.matchedSet.delete(this.uid) && actions.onFalseAfterTrue) {
+                    actions.onFalseAfterTrue(this, packet);
+                }
+            }
+        };
+        this.whenMap.forEach(processor);
+        Model.whenMap.forEach(processor);
+    }
+
     toString(): string {
         function censor(key: string, value: any) {
             if (key === "client") {
@@ -281,13 +334,20 @@ class Model implements NodeJS.EventEmitter {
     }
 }
 
+type whenFilter = (m: Model) => boolean;
+type whenCallback = (m: Model, p: Packet) => void;
+interface whenMapEntry {
+    onTrue: whenCallback;
+    onFalseAfterTrue: whenCallback;
+    matchedSet: Set<number>;
+}
 interface mergeCallbackPayload { prop: string; oldstate: number | string | string[] | boolean; newstate: number | string | string[] | boolean };
 interface ModelSessionDetails extends BaseMessage, ModelDetailsMessage, UserDetailsMessage, SessionDetailsMessage {
     model_sw?: number;
     truepvt?: number;
     guests_muted?: number;
     basics_muted?: number;
-    [index: string]: number|string|boolean;
+    [index: string]: number | string | boolean;
 }
 
 applyMixins(Model, [EventEmitter]);

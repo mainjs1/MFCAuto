@@ -493,7 +493,21 @@ declare class Model implements NodeJS.EventEmitter {
     bestSession: ModelSessionDetails;
     mergePacket(packet: Packet): void;
     private purgeOldSessions();
+    private static whenMap;
+    static when(condition: whenFilter, onTrue: whenCallback, onFalseAfterTrue?: whenCallback): void;
+    static removeWhen(condition: (m: Model) => boolean): boolean;
+    private whenMap;
+    when(condition: whenFilter, onTrue: whenCallback, onFalseAfterTrue?: whenCallback): void;
+    removeWhen(condition: (m: Model) => boolean): boolean;
+    private processWhens(packet);
     toString(): string;
+}
+declare type whenFilter = (m: Model) => boolean;
+declare type whenCallback = (m: Model, p: Packet) => void;
+interface whenMapEntry {
+    onTrue: whenCallback;
+    onFalseAfterTrue: whenCallback;
+    matchedSet: Set<number>;
 }
 interface mergeCallbackPayload {
     prop: string;

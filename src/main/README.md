@@ -156,6 +156,33 @@ See below for a nearly complete list of event names.
 
 ---
 
+## static when(condition: whenFilter, onTrue: whenCallback, onFalseAfterTrue: whenCallback = null): void
+On every change for any model, the given condition callback will be invoked. If condition returns true, the onTrue callback will be invoked with the instance of the model that matched the condition.  When that model stops matching the given condition, the onFalseAfterTrue callback will be invoked, if it was provided.
+
+```javascript
+mfc.Model.when(
+    (m) => m.bestSession.rc > 2000,
+    (m) => console.log(`${m.nm} has over 200 viewers!`),
+    (m) => console.log(`${m.nm} no longer has over 2000 viewers`)
+);
+```
+
+---
+
+## when(condition: whenFilter, onTrue: whenCallback, onFalseAfterTrue: whenCallback = null): void
+On every change for this model, the given condition callback will be invoked. If condition returns true, the onTrue callback will be invoked with the instance of the model that matched the condition.  When that model stops matching the given condition, the onFalseAfterTrue callback will be invoked, if it was provided.
+
+```javascript
+var AspenRae = mfc.Model.getModel(3111899);
+AspenRae.when(
+    (m) => m.bestSession.vs !== mfc.STATE.Offline,
+    (m) => console.log('AspenRae has logged on!'),
+    (m) => console.log('AspenRae has logged off')
+);
+```
+
+---
+
 ### Model "bestSession" properties and event names
 Here are most of the possible events to listen for and properties to look for on .bestSession.  This is not a complete set because MFC can change their protocol to add a new property and MFCAuto will start merging that into .bestSession and firing events for it immediately, without me having to notice or document it.
 
