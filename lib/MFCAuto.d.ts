@@ -644,6 +644,6 @@ interface Set<T> {
     entries(): Array<Array<T>>;
 }
 declare var Set: {
-    new <T>(): Set<T>;
+    new <T>(init?: T[]): Set<T>;
     prototype: Set<any>;
 };
