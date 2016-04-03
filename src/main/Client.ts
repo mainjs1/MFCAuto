@@ -18,7 +18,7 @@ class Client implements NodeJS.EventEmitter {
     private streamBufferPosition: number;
     private emoteParser: EmoteParser;
     private client: any;
-    private keepAlive: NodeJS.Timer;
+    private keepAlive: number;
     private manualDisconnect: boolean;
 
     //By default, this client will log in as a guest.
@@ -275,18 +275,25 @@ class Client implements NodeJS.EventEmitter {
     //Note that if the text you want to send does not have any emotes, you can
     //directly use TxCmd with the raw string (or possibly the escape(string) but
     //that's easy enough)
-    EncodeRawChat(rawMsg: string, callback: EmoteParserCallback): void {
-        if (rawMsg.match(/^ *$/)) {
-            callback(rawMsg, null);
-            return;
+    EncodeRawChat(rawMsg: string): Promise<string> {
+        if (arguments.length !== 1) {
+            throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
         }
 
-        rawMsg = rawMsg.replace(/`/g, "'");
-        rawMsg = rawMsg.replace(/<~/g, "'");
-        rawMsg = rawMsg.replace(/~>/g, "'");
-        this.ensureEmoteParserIsLoaded(function(msg: string, cb: EmoteParserCallback) {
-            this.emoteParser.Process(msg, cb);
-        }.bind(this, rawMsg, callback));
+        return new Promise((resolve, reject) => {
+            //Pre-filters mostly taken from player.html's SendChat method
+            if (rawMsg.match(/^\s*$/) || !rawMsg.match(/:/)) {
+                resolve(rawMsg);
+                return;
+            }
+
+            rawMsg = rawMsg.replace(/`/g, "'");
+            rawMsg = rawMsg.replace(/<~/g, "'");
+            rawMsg = rawMsg.replace(/~>/g, "'");
+            this.ensureEmoteParserIsLoaded().then(() => {
+                this.emoteParser.Process(rawMsg, resolve);
+            });
+        });
     }
 
     //Dynamically loads script code from MFC, massaging it with the given massager
@@ -296,27 +303,32 @@ class Client implements NodeJS.EventEmitter {
     //We try to use this sparingly as it opens us up to breaks from site changes.
     //But it is still useful for the more complex or frequently updated parts
     //of MFC.
-    private loadFromMFC(url: string, callback: (err: any, obj: any) => void, massager?: (src: string) => string): void {
-        var http: any = require('http');
-        var load: any = require('load');
-        http.get(url, function(res: any) {
-            var contents = '';
-            res.on('data', function(chunk: string) {
-                contents += chunk;
-            });
-            res.on('end', function() {
-                try {
-                    if (massager !== undefined) {
-                        contents = massager(contents);
+    private loadFromMFC(url: string, massager?: (src: string) => string): Promise<any> {
+        if (arguments.length > 2) {
+            throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
+        }
+        return new Promise((resolve, reject) => {
+            var http: any = require('http');
+            var load: any = require('load');
+            http.get(url, function(res: any) {
+                var contents = '';
+                res.on('data', function(chunk: string) {
+                    contents += chunk;
+                });
+                res.on('end', function() {
+                    try {
+                        if (massager !== undefined) {
+                            contents = massager(contents);
+                        }
+                        var mfcModule = load.compiler(contents)
+                        resolve(mfcModule);
+                    } catch (e) {
+                        reject(e);
                     }
-                    var mfcModule = load.compiler(contents)
-                    callback(undefined, mfcModule);
-                } catch (e) {
-                    callback(e, undefined);
-                }
+                });
+            }).on('error', function(e: any) {
+                reject(e);
             });
-        }).on('error', function(e: any) {
-            throw new Error("loadFromMFC error while loading '" + url + "' : " + e);
         });
     }
 
@@ -328,17 +340,15 @@ class Client implements NodeJS.EventEmitter {
     //We're loading this code from the live site instead of re-coding it ourselves
     //here because of the complexity of the code and the fact that it has changed
     //several times in the past.
-    private ensureEmoteParserIsLoaded(callback: () => void): void {
-        if (this.emoteParser !== undefined) {
-            callback();
-        } else {
-            this.loadFromMFC("http://www.myfreecams.com/_js/mfccore.js", function(err: any, obj: any) {
-                if (err) throw err;
-                this.emoteParser = new obj.ParseEmoteInput();
-                this.emoteParser.setUrl("http://www.myfreecams.com/mfc2/php/ParseChatStream.php");
-                callback();
-            }.bind(this),
-                function(content) {
+    private ensureEmoteParserIsLoaded() {
+        if (arguments.length !== 0) {
+            throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
+        }
+        return new Promise((resolve, reject) => {
+            if (this.emoteParser !== undefined) {
+                resolve();
+            } else {
+                this.loadFromMFC("http://www.myfreecams.com/_js/mfccore.js", (content) => {
                     //Massager....Yes this is vulnerable to site breaks, but then
                     //so is this entire module.
 
@@ -351,23 +361,34 @@ class Client implements NodeJS.EventEmitter {
                     //Then massage the function somewhat and prepend some prerequisites
                     content = "var document = {cookie: ''};var XMLHttpRequest = require('XMLHttpRequest').XMLHttpRequest;function bind(that,f){return f.bind(that);}" + content.replace(/createRequestObject\(\)/g, "new XMLHttpRequest()").replace(/new MfcImageHost\(\)/g, "{host: function(){return '';}}").replace(/this\.Reset\(\);/g, "this.Reset();this.oReq = new XMLHttpRequest();");
                     return content;
+                }).then((obj) => {
+                    this.emoteParser = new obj.ParseEmoteInput();
+                    this.emoteParser.setUrl("http://www.myfreecams.com/mfc2/php/ParseChatStream.php");
+                    resolve();
+                }).catch((reason) => {
+                    reject(reason);
                 });
-        }
+            }
+        });
     }
 
     //Loads the lastest server information from MFC, if it's not already loaded
-    private ensureServerConfigIsLoaded(callback: () => void): void {
-        if (this.serverConfig !== undefined) {
-            callback();
-        } else {
-            this.loadFromMFC("http://www.myfreecams.com/_js/serverconfig.js", function(err: any, obj: any) {
-                if (err) throw err;
-                this.serverConfig = obj.serverConfig;
-                callback();
-            }.bind(this), function(text) {
-                return "var serverConfig = " + text;
-            });
+    private ensureServerConfigIsLoaded() {
+        if (arguments.length !== 0) {
+            throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
         }
+        return new Promise((resolve, reject) => {
+            if (this.serverConfig !== undefined) {
+                resolve();
+            } else {
+                this.loadFromMFC("http://www.myfreecams.com/_js/serverconfig.js", (text) => {
+                    return "var serverConfig = " + text;
+                }).then((obj) => {
+                    this.serverConfig = obj.serverConfig;
+                    resolve();
+                });
+            }
+        });
     }
 
     //Sends a message back to MFC in the expected packet format
@@ -416,10 +437,12 @@ class Client implements NodeJS.EventEmitter {
     }
 
 
-    //Send msg to the given model's chat room.  Set format to true
-    //if this message contains any emotes.  Otherwise, you can save
-    //considerable processing time by leaving it false and sending the
-    //raw string.
+    //Send msg to the given model's chat room.
+    //
+    //If the message is one you intend to send more than once,
+    //and your message contains emotes, you can save some processing
+    //overhead by calling client.EncodeRawChat once for the string,
+    //caching the result of that call, and passing that string here.
     //
     //Note that you must have previously joined the model's chat room
     //for the message to be sent successfully.
@@ -427,34 +450,28 @@ class Client implements NodeJS.EventEmitter {
     //Also note, this method has no callback currently, and your message
     //may fail to be sent successfully if you are muted or ignored by
     //the model.
-    sendChat(id: number, msg: string, format: boolean = false): void {
-        if (format === true) {
-            this.EncodeRawChat(msg, function(parsedMsg: string) {
-                this.sendChat(id, parsedMsg, false);
-            }.bind(this));
-        } else {
+    sendChat(id: number, msg: string): void {
+        this.EncodeRawChat(msg).then((encodedMsg) => {
             id = Client.toRoomId(id);
-            this.TxCmd(FCTYPE.CMESG, id, 0, 0, msg);
-        }
+            this.TxCmd(FCTYPE.CMESG, id, 0, 0, encodedMsg);
+        });
     }
 
-    //Send msg to the given model via PM.  Set format to true
-    //if this message contains any emotes.  Otherwise, you can save
-    //considerable processing time by leaving it false and sending the
-    //raw string.
+    //Send msg to the given model via PM.
+    //
+    //If the message is one you intend to send more than once,
+    //and your message contains emotes, you can save some processing
+    //overhead by calling client.EncodeRawChat once for the string,
+    //caching the result of that call, and passing that string here.
     //
     //Also note, this method has no callback currently, and your message
     //may fail to be sent successfully if you are ignored by the model or
     //do not have PM access (due to being a guest, etc).
-    sendPM(id: number, msg: string, format: boolean = false): void {
-        if (format === true) {
-            this.EncodeRawChat(msg, function(parsedMsg: string) {
-                this.sendPM(id, parsedMsg, false);
-            }.bind(this));
-        } else {
+    sendPM(id: number, msg: string): void {
+        this.EncodeRawChat(msg).then((encodedMsg) => {
             id = Client.toUserId(id);
-            this.TxCmd(FCTYPE.PMESG, id, 0, 0, msg);
-        }
+            this.TxCmd(FCTYPE.PMESG, id, 0, 0, encodedMsg);
+        });
     }
 
     //Joins the chat room of the given model
@@ -475,48 +492,50 @@ class Client implements NodeJS.EventEmitter {
     //Logging in is optional because not all queries to the server require you to log in.
     //For instance, MFC servers will respond to a USERNAMELOOKUP request without
     //requiring a login.
-    connect(doLogin: boolean = true, onConnect: () => void = undefined): void {
-        //Reset any read buffers so we are in a consistent state
-        this.streamBuffer = new Buffer(0);
-        this.streamBufferPosition = 0;
+    connect(doLogin: boolean = true) {
+        if (arguments.length > 1) {
+            throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
+        }
+        return new Promise((resolve, reject) => {
+            //Reset any read buffers so we are in a consistent state
+            this.streamBuffer = new Buffer(0);
+            this.streamBufferPosition = 0;
 
-        this.ensureServerConfigIsLoaded(function() {
-            var chatServer = this.serverConfig.chat_servers[Math.floor(Math.random() * this.serverConfig.chat_servers.length)];
+            this.ensureServerConfigIsLoaded().then(() => {
+                var chatServer = this.serverConfig.chat_servers[Math.floor(Math.random() * this.serverConfig.chat_servers.length)];
 
-            this.log("Connecting to MyFreeCams chat server " + chatServer + "...");
-            this.client = this.net.connect(8100, chatServer + ".myfreecams.com", function() { //'connect' listener
-                this.client.on('data', function(data: any) {
-                    this._readData(data);
-                }.bind(this));
-                this.client.on('end', function() {
-                    clearInterval(this.keepAlive);
-                    if (this.password === "guest" && this.username.startsWith("Guest")) {
-                        //If we had a successful guest login before, we'll have changed
-                        //username to something like Guest12345 or whatever the server assigned
-                        //to us. That is not valid to log in again, so reset it back to guest.
-                        this.username = "guest";
+                this.log("Connecting to MyFreeCams chat server " + chatServer + "...");
+                this.client = this.net.connect(8100, chatServer + ".myfreecams.com", () => { //'connect' listener
+                    this.client.on('data', (data: any) => {
+                        this._readData(data);
+                    });
+                    this.client.on('end', () => {
+                        clearInterval(this.keepAlive);
+                        if (this.password === "guest" && this.username.startsWith("Guest")) {
+                            //If we had a successful guest login before, we'll have changed
+                            //username to something like Guest12345 or whatever the server assigned
+                            //to us. That is not valid to log in again, so reset it back to guest.
+                            this.username = "guest";
+                        }
+                        if (!this.manualDisconnect) {
+                            this.log('Disconnected from MyFreeCams.  Reconnecting in 30 seconds...'); // Is 30 seconds reasonable?
+                            setTimeout(this.connect.bind(this), 30000);
+                        } else {
+                            this.manualDisconnect = false;
+                        }
+                    });
+
+                    //Connecting without logging in is the rarer case, so make the default to log in
+                    if (doLogin) {
+                        this.login();
                     }
-                    if (!this.manualDisconnect) {
-                        this.log('Disconnected from MyFreeCams.  Reconnecting in 30 seconds...'); // Is 30 seconds reasonable?
-                        setTimeout(this.connect.bind(this), 30000);
-                    } else {
-                        this.manualDisconnect = false;
-                    }
-                }.bind(this));
 
-                //Connecting without logging in is the rarer case, so make the default to log in
-                if (doLogin) {
-                    this.login();
-                }
-
-                //Also should make this an optional separate function too (maybe, maybe not)
-                this.keepAlive = setInterval(function() { this.TxCmd(FCTYPE.NULL, 0, 0, 0, null); }.bind(this), 120 * 1000);
-                if (onConnect !== undefined) {
-                    onConnect();
-                }
-            }.bind(this));
-
-        }.bind(this));
+                    //Also should make this an optional separate function too (maybe, maybe not)
+                    this.keepAlive = setInterval(function() { this.TxCmd(FCTYPE.NULL, 0, 0, 0, null); }.bind(this), 120 * 1000);
+                    resolve();
+                });
+            });
+        });
     }
 
     //Logs in to MFC.  This should only be called after Client connect(false);
@@ -539,30 +558,35 @@ class Client implements NodeJS.EventEmitter {
     //also wait until your friends list is completely loaded.
     //@TODO - Check if anything else is needed to wait for 'bookmarked'
     //models...
-    connectAndWaitForModels(onConnect: () => void) {
-        let completedModels = false;
-        let completedFriends = true;
-        function modelListFinished(packet: Packet) {
-            //nTo of 2 means these are metrics for friends
-            //nTo of 20 means these are metrics for online models in general
-            //nTo of 64 means something else that I'm not sure about, maybe region hidden models?
-            if (packet.nTo === 2) {
-                if (packet.nArg1 !== packet.nArg2) {
-                    completedFriends = false;
-                } else {
-                    completedFriends = true;
+    connectAndWaitForModels() {
+        if (arguments.length !== 0) {
+            throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
+        }
+        return new Promise((resolve, reject) => {
+            let completedModels = false;
+            let completedFriends = true;
+            function modelListFinished(packet: Packet) {
+                //nTo of 2 means these are metrics for friends
+                //nTo of 20 means these are metrics for online models in general
+                //nTo of 64 means something else that I'm not sure about, maybe region hidden models?
+                if (packet.nTo === 2) {
+                    if (packet.nArg1 !== packet.nArg2) {
+                        completedFriends = false;
+                    } else {
+                        completedFriends = true;
+                    }
+                }
+                if (packet.nTo === 20 && packet.nArg1 === packet.nArg2) {
+                    completedModels = true;
+                }
+                if (completedModels && completedFriends) {
+                    this.removeListener("METRICS", modelListFinished);
+                    resolve();
                 }
             }
-            if (packet.nTo === 20 && packet.nArg1 === packet.nArg2) {
-                completedModels = true;
-            }
-            if (completedModels && completedFriends) {
-                this.removeListener("METRICS", modelListFinished);
-                onConnect();
-            }
-        }
-        this.on("METRICS", modelListFinished.bind(this));
-        this.connect(true);
+            this.on("METRICS", modelListFinished.bind(this));
+            this.connect(true);
+        });
     }
 
     //Disconnects by closing the socket. There may be
@@ -582,10 +606,11 @@ applyMixins(Client, [EventEmitter]);
 type EmoteParserCallback = (parsedString: string, aMsg2: { txt: string; url: string; code: string }[]) => void;
 interface EmoteParser {
     Process(msg: string, callback: EmoteParserCallback): void;
+    setUrl(url: string): void;
 }
 interface ServerConfig {
     ajax_servers: string[];
-    chat_server: string[];
+    chat_servers: string[];
     h5video_servers: { [index: number]: string };
     release: boolean;
     video_servers: string[];

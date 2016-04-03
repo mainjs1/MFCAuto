@@ -10,6 +10,15 @@ Here are some examples of how you might use MFCAuto.js.  [More complete API docu
 
 ------------
 
+## Setup
+
+```bash
+# Install the latest MFCAuto
+$ npm install ZombieAlex/MFCAuto
+```
+
+------------
+
 ##Examples
 
 ### Query MFC for a model's details
@@ -27,10 +36,10 @@ var client = new mfc.Client();
 
 client.on("USERNAMELOOKUP", function(packet){
     console.log(packet.toString());
-    process.exit();
+    client.disconnect();
 });
 
-client.connect(false, function(){
+client.connect(false).then(function(){
     client.TxCmd(mfc.FCTYPE.USERNAMELOOKUP, 0, 20, 0, 'AspenRae');
 });
 ```

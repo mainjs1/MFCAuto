@@ -157,6 +157,7 @@ enum FCOPT {
     'MODELSW' = 2048,
     'GUESTMUTE' = 4096,
     'BASICMUTE' = 8192,
+    'SMALLCAPS' = 16384,
     'BOOKMARK' = 16384,
 };
 
@@ -431,6 +432,7 @@ enum WEBCAM {
     'SECURITY_MODELS' = 3,
     'SECURITY_MODELS_FRIENDS' = 4,
     'SECURITY_ALLOWED' = 5,
+    'SECURITY_FRIEND_ID' = 100,
 };
 
 enum WINDOW {

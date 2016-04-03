@@ -15,7 +15,7 @@ describe('Startup Scenarios', function() {
     });
     it("should be able to dynamically load the MFC server config", function(done) {
         client = new mfc.Client();
-        client.ensureServerConfigIsLoaded(function() {
+        client.ensureServerConfigIsLoaded().then(() => {
             assert.notStrictEqual(client.serverConfig, undefined);
             assert.notStrictEqual(client.serverConfig.chat_servers, undefined);
             assert.notStrictEqual(client.serverConfig.chat_servers.length, 0);
@@ -24,7 +24,7 @@ describe('Startup Scenarios', function() {
     });
     it("should be able to connect without logging in", function(done) {
         client = new mfc.Client();
-        client.connect(false, done);
+        client.connect(false).then(done);
     });
     it("should be able to log in as a guest", function(done) {
         client = new mfc.Client();
@@ -43,7 +43,7 @@ describe('Connected Scenarios', function() {
     let client = new mfc.Client();
     let queen;
     before(function(done) {
-        client.connectAndWaitForModels(function() {
+        client.connectAndWaitForModels().then(function() {
             //Find the most popular model in free chat right now
             let popularModels = mfc.Model.findModels((m) => m.bestSession.vs === 0);
             assert.notStrictEqual(popularModels.length, 0, "No models in public chat??? Is MFC down?");
@@ -95,12 +95,12 @@ describe('Connected Scenarios', function() {
 
         it("should be able to encode chat strings", function(done) {
             let decodedString = "I am happy :mhappy";
-            client.EncodeRawChat(decodedString, function(parsedString, aMsg2) {
-                assert.strictEqual(aMsg2.length, 2, "Unexpected number of emotes parsed");
-                assert.strictEqual(aMsg2[0], "I am happy ");
-                assert.strictEqual(aMsg2[1].txt, ":mhappy");
-                assert.strictEqual(aMsg2[1].url, "http://www.myfreecams.com/chat_images/u/2c/2c9d2da6.gif");
-                assert.strictEqual(aMsg2[1].code, "#~ue,2c9d2da6.gif,mhappy~#");
+            client.EncodeRawChat(decodedString).then(function(parsedString/*, aMsg2*/) {
+                // assert.strictEqual(aMsg2.length, 2, "Unexpected number of emotes parsed");
+                // assert.strictEqual(aMsg2[0], "I am happy ");
+                // assert.strictEqual(aMsg2[1].txt, ":mhappy");
+                // assert.strictEqual(aMsg2[1].url, "http://www.myfreecams.com/chat_images/u/2c/2c9d2da6.gif");
+                // assert.strictEqual(aMsg2[1].code, "#~ue,2c9d2da6.gif,mhappy~#");
                 assert.strictEqual(parsedString, "I am happy #~ue,2c9d2da6.gif,mhappy~#", "Encoding failed or returned an unexpected format");
 
                 //And we should be able to decode that string back too

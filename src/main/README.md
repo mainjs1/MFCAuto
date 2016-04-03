@@ -14,8 +14,8 @@ Before any MFCAuto events are processed, either on the Client instances or Model
 
 ---
 
-### connect(doLogin: boolean = true, onConnect: () => void = undefined): void
-Connects to MFC, optionally logs in, and invokes onConnect as soon as the socket connection to an MFC chat server has been established
+### connect(doLogin: boolean = true): Promise
+Connects to MFC, optionally logs in, and returns a Promise that resolves as soon as the socket connection to an MFC chat server has been established
 ```javascript
 //Most common case is simply to connect, log in, and start processing events
 client.connect();
@@ -23,11 +23,11 @@ client.connect();
 
 ---
 
-### connectAndWaitForModels(onConnect: () => void): void
-Connects to MFC, logs in, and invokes the onConnect callback only when details for all online models have been received.
+### connectAndWaitForModels(): void
+Connects to MFC, logs in, and returns a Promise that resolves only when details for all online models have been received.
 
 ```javascript
-client.connectAndWaitForModels(() => {
+client.connectAndWaitForModels().then(() => {
     //Do interesting stuff that depends on having models loaded here
 });
 ```
@@ -74,17 +74,13 @@ Leave the given model's chat room.
 
 ---
 
-### sendChat(id: number, msg: string, format: boolean = false): void
+### sendChat(id: number, msg: string): void
 Sends "msg" to a model's chat room.  Call this only after joining the room.  This message could fail to be sent if you're muted or banned. At present, no easy way to detect failure is provided.
-
-If your message contains emotes, set format to true.  It is safe to always set format to true, but incurs a performance hit.
 
 ---
 
-### sendPM(id: number, msg: string, format: boolean = false): void
+### sendPM(id: number, msg: string): void
 Sends "msg" to a model (or any user by ID) via PM.  This message could fail to be sent. At present, no easy way to detect failure is provided.
-
-If your message contains emotes, set format to true.  It is safe to always set format to true, but incurs a performance hit.
 
 ---
 
@@ -162,7 +158,7 @@ On every change for any model, the given condition callback will be invoked. If 
 ```javascript
 mfc.Model.when(
     (m) => m.bestSession.rc > 2000,
-    (m) => console.log(`${m.nm} has over 200 viewers!`),
+    (m) => console.log(`${m.nm} has over 2000 viewers!`),
     (m) => console.log(`${m.nm} no longer has over 2000 viewers`)
 );
 ```

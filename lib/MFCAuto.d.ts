@@ -27,20 +27,20 @@ declare class Client implements NodeJS.EventEmitter {
     private _readData(buf);
     private _packetReceived(packet);
     private _readPacket();
-    EncodeRawChat(rawMsg: string, callback: EmoteParserCallback): void;
-    private loadFromMFC(url, callback, massager?);
-    private ensureEmoteParserIsLoaded(callback);
-    private ensureServerConfigIsLoaded(callback);
+    EncodeRawChat(rawMsg: string): Promise<string>;
+    private loadFromMFC(url, massager?);
+    private ensureEmoteParserIsLoaded();
+    private ensureServerConfigIsLoaded();
     TxCmd(nType: FCTYPE, nTo?: number, nArg1?: number, nArg2?: number, sMsg?: string): void;
     static toUserId(id: number): number;
     static toRoomId(id: number): number;
-    sendChat(id: number, msg: string, format?: boolean): void;
-    sendPM(id: number, msg: string, format?: boolean): void;
+    sendChat(id: number, msg: string): void;
+    sendPM(id: number, msg: string): void;
     joinRoom(id: number): void;
     leaveRoom(id: number): void;
-    connect(doLogin?: boolean, onConnect?: () => void): void;
+    connect(doLogin?: boolean): Promise<{}>;
     login(username?: string, password?: string): void;
-    connectAndWaitForModels(onConnect: () => void): void;
+    connectAndWaitForModels(): Promise<{}>;
     disconnect(): void;
 }
 declare type EmoteParserCallback = (parsedString: string, aMsg2: {
@@ -50,10 +50,11 @@ declare type EmoteParserCallback = (parsedString: string, aMsg2: {
 }[]) => void;
 interface EmoteParser {
     Process(msg: string, callback: EmoteParserCallback): void;
+    setUrl(url: string): void;
 }
 interface ServerConfig {
     ajax_servers: string[];
-    chat_server: string[];
+    chat_servers: string[];
     h5video_servers: {
         [index: number]: string;
     };
@@ -193,6 +194,7 @@ declare enum FCOPT {
     'MODELSW' = 2048,
     'GUESTMUTE' = 4096,
     'BASICMUTE' = 8192,
+    'SMALLCAPS' = 16384,
     'BOOKMARK' = 16384,
 }
 declare enum FCRESPONSE {
@@ -450,6 +452,7 @@ declare enum WEBCAM {
     'SECURITY_MODELS' = 3,
     'SECURITY_MODELS_FRIENDS' = 4,
     'SECURITY_ALLOWED' = 5,
+    'SECURITY_FRIEND_ID' = 100,
 }
 declare enum WINDOW {
     'MODE_DEFAULT' = 0,
@@ -616,34 +619,3 @@ interface SessionDetailsMessage {
 }
 declare function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) => string): void;
 declare function applyMixins(derivedCtor: any, baseCtors: any[]): void;
-interface Map<K, V> {
-    clear(): void;
-    delete(key: K): boolean;
-    forEach(callbackfn: (value: V, index: K, map: Map<K, V>) => void, thisArg?: any): void;
-    get(key: K): V;
-    has(key: K): boolean;
-    set(key: K, value: V): Map<K, V>;
-    size: number;
-    values(): Array<V>;
-    keys(): Array<K>;
-    entries(): Array<Array<K | V>>;
-}
-declare var Map: {
-    new <K, V>(): Map<K, V>;
-    prototype: Map<any, any>;
-};
-interface Set<T> {
-    add(value: T): Set<T>;
-    clear(): void;
-    delete(value: T): boolean;
-    forEach(callbackfn: (value: T, index: T, set: Set<T>) => void, thisArg?: any): void;
-    has(value: T): boolean;
-    size: number;
-    values(): Array<T>;
-    keys(): Array<T>;
-    entries(): Array<Array<T>>;
-}
-declare var Set: {
-    new <T>(init?: T[]): Set<T>;
-    prototype: Set<any>;
-};
