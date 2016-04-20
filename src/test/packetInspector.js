@@ -1,4 +1,3 @@
-/* jshint node: true, nonstandard: true, esversion: 6, indent: 4, undef: true, unused: true, bitwise: true, eqeqeq: true, latedef: true, trailing: true */
 /*
 packetInspector.js
 
@@ -24,18 +23,18 @@ let pass = "guest";
 let cred = "cred.txt";
 if (fs.existsSync(cred)) {
     let data = fs.readFileSync(cred).toString().split("\r\n");
-    if(data.length>=2){
+    if (data.length >= 2) {
         user = data[0];
         pass = data[1];
     }
 }
 let client = new mfc.Client(user, pass);
 
-client.on("ANY", function (packet) {
+client.on("ANY", (packet) => {
     log(packet.toString(), "packetLog", null);
 });
 
-client.connectAndWaitForModels(function () {
+client.connectAndWaitForModels(() => {
     //Find the most popular model in free chat right now
     let freeModels = mfc.Model.findModels((m) => m.bestSession.vs === 0);
     freeModels.sort((a, b) => a.bestSession.rc - b.bestSession.rc);

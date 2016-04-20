@@ -1,0 +1,39 @@
+{
+    "env": {
+        "es6": true,
+        "node": true
+    },
+    "extends": "eslint:recommended",
+    "parserOptions": {
+        "sourceType": "module"
+    },
+    "rules": {
+        "indent": [
+            "error",
+            4
+        ],
+        "linebreak-style": 0,
+        "quotes": [
+            "error",
+            "double",
+            {
+                "avoidEscape": true,
+                "allowTemplateLiterals": true
+            }
+        ],
+        "semi": [
+            "error",
+            "always"
+        ],
+        "no-console": 0,
+        "comma-dangle": [
+            "error",
+            "only-multiline"
+        ],
+        "consistent-return": 2,
+        "eqeqeq": 2,
+        "no-else-return": 1,
+        "no-multi-spaces": 2,
+        "prefer-arrow-callback": 1
+    }
+}

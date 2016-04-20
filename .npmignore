@@ -3,3 +3,4 @@ src/
 typings/
 tsd.json
 tsconfig.json
+.eslintrc.json

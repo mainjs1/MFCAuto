@@ -1,0 +1,17 @@
+// Place your settings in this file to overwrite default and user settings.
+{
+    "eslint.enable": true,
+    "jshint.enable": false,
+    "jshint.options": {
+        "node": true,
+        "nonstandard": true,
+        "esnext": true,
+        "indent": 4,
+        "undef": true,
+        "unused": true,
+        "bitwise": true,
+        "eqeqeq": true,
+        "latedef": true,
+        "trailing": true
+    }
+}

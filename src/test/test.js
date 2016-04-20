@@ -1,19 +1,18 @@
-/* jshint node: true, nonstandard: true, esversion: 6, indent: 4, undef: true, unused: true, bitwise: true, eqeqeq: true, latedef: true, trailing: true */
-/* globals describe, it, before */
+/* globals describe, it, before, after, afterEach */
 // To generate a test coverage report, from the root of the MFCAuto repo, run:
 //  istanbul cover .\node_modules\mocha\bin\_mocha ./src/test/test.js
 // That's assuming you have mocha installed locally and istanbul installed globally
 //@TODO - More response packet validation everywhere
 "use strict";
-let assert = require('assert');
-let mfc = require('../../lib/MFCAuto.js');
+let assert = require("assert");
+let mfc = require("../../lib/MFCAuto.js");
 
-describe('Startup Scenarios', function() {
+describe("Startup Scenarios", () => {
     let client = null;
-    afterEach(function() {
+    afterEach(() => {
         client.disconnect();
     });
-    it("should be able to dynamically load the MFC server config", function(done) {
+    it("should be able to dynamically load the MFC server config", (done) => {
         client = new mfc.Client();
         client.ensureServerConfigIsLoaded().then(() => {
             assert.notStrictEqual(client.serverConfig, undefined);
@@ -22,14 +21,14 @@ describe('Startup Scenarios', function() {
             done();
         });
     });
-    it("should be able to connect without logging in", function(done) {
+    it("should be able to connect without logging in", (done) => {
         client = new mfc.Client();
         client.connect(false).then(done);
     });
-    it("should be able to log in as a guest", function(done) {
+    it("should be able to log in as a guest", (done) => {
         client = new mfc.Client();
-        assert.strictEqual(client.username.indexOf('guest'), 0, "We didn't start in the default state?");
-        client.on("LOGIN", function(packet) {
+        assert.strictEqual(client.username.indexOf("guest"), 0, "We didn't start in the default state?");
+        client.on("LOGIN", (packet) => {
             assert.strictEqual(packet.nArg1, 0, "Failed login error code");
             assert.strictEqual(client.username.indexOf("Guest"), 0, "We didn't log in as a guest successfully");
             done();
@@ -38,12 +37,12 @@ describe('Startup Scenarios', function() {
     });
 });
 
-describe('Connected Scenarios', function() {
+describe("Connected Scenarios", function() {
     this.timeout(7000);
     let client = new mfc.Client();
     let queen;
-    before(function(done) {
-        client.connectAndWaitForModels().then(function() {
+    before((done) => {
+        client.connectAndWaitForModels().then(() => {
             //Find the most popular model in free chat right now
             let popularModels = mfc.Model.findModels((m) => m.bestSession.vs === 0);
             assert.notStrictEqual(popularModels.length, 0, "No models in public chat??? Is MFC down?");
@@ -52,11 +51,11 @@ describe('Connected Scenarios', function() {
             done();
         });
     });
-    after(function() {
+    after(() => {
         client.disconnect();
     });
-    describe("Client", function() {
-        it("should be able to send a USERNAMELOOKUP query and parse a valid response", function(done) {
+    describe("Client", () => {
+        it("should be able to send a USERNAMELOOKUP query and parse a valid response", (done) => {
             assert.notStrictEqual(queen.bestSession.nm, undefined, "How do we not know the top model's name??");
 
             //Register a handler for USERNAMELOOKUP messages
@@ -76,8 +75,8 @@ describe('Connected Scenarios', function() {
             client.TxCmd(mfc.FCTYPE.USERNAMELOOKUP, 0, 20, 0, queen.bestSession.nm);
         });
 
-        it("should be able to join a room and log chat", function(done) {
-            client.on("CMESG", function(packet) {
+        it("should be able to join a room and log chat", (done) => {
+            client.on("CMESG", (packet) => {
                 assert.strictEqual(packet.aboutModel.uid, queen.uid);
                 if (packet.chatString !== undefined) {
                     //@TODO - Also ensure at least one of these
@@ -93,9 +92,9 @@ describe('Connected Scenarios', function() {
             client.joinRoom(queen.uid);
         });
 
-        it("should be able to encode chat strings", function(done) {
+        it("should be able to encode chat strings", (done) => {
             let decodedString = "I am happy :mhappy";
-            client.EncodeRawChat(decodedString).then(function(parsedString/*, aMsg2*/) {
+            client.EncodeRawChat(decodedString).then((parsedString/*, aMsg2*/) => {
                 // assert.strictEqual(aMsg2.length, 2, "Unexpected number of emotes parsed");
                 // assert.strictEqual(aMsg2[0], "I am happy ");
                 // assert.strictEqual(aMsg2[1].txt, ":mhappy");
@@ -110,7 +109,7 @@ describe('Connected Scenarios', function() {
             });
         });
 
-        it("should be able to send chat", function(done) {
+        it("should be able to send chat", (done) => {
             /*
             @TODO - Find a room that allows guest chat, join it, send some text
             and validate that we receive the text back with a matching username, etc
@@ -147,18 +146,18 @@ describe('Connected Scenarios', function() {
         //         done();
         //     });
         // });
-        it("should be able to listen for global model state change events", function(done) {
-            mfc.Model.on("rc", function(model/*, oldstate, newstate*/) {
+        it("should be able to listen for global model state change events", (done) => {
+            mfc.Model.on("rc", (model/*, oldstate, newstate*/) => {
                 assert.notStrictEqual(model, undefined);
                 mfc.Model.removeAllListeners("rc");
                 done();
             });
         });
-        it("should merge only models", function() {
+        it("should merge only models", () => {
             let nonModels = mfc.Model.findModels((m) => m.bestSession.sid !== 0 && m.bestSession.lv !== 4);
             assert.strictEqual(nonModels.length, 0);
         });
-        it("should be able to process .when events on one model", function(done) {
+        it("should be able to process .when events on one model", (done) => {
             let filterMatched = false;
             queen.when(
                 () => {
@@ -178,7 +177,7 @@ describe('Connected Scenarios', function() {
                 // }
             );
         });
-        it("should be able to process .when events on all models", function(done) {
+        it("should be able to process .when events on all models", (done) => {
             let matchedModels = new Set();
             mfc.Model.when(
                 (m) => m.bestSession.vs === mfc.STATE.Online,
