@@ -75,8 +75,8 @@ enum FCCHAN {
     "ERR_NOTALLOWED" = 6,
     "ERR_CONTENT" = 7,
     "HISTORY" = 8,
-    "CAMSTATE" = 16,
     "LIST" = 16,
+    "CAMSTATE" = 16,
     "WELCOME" = 32,
     "BATCHPART" = 64,
     "EXT_USERNAME" = 128,
@@ -198,6 +198,9 @@ enum FCSERV {
 }
 
 enum FCTYPE {
+    "CLIENT_DISCONNECTED" = -5,
+    "CLIENT_MODELSLOADED" = -4,
+    "CLIENT_CONNECTED" = -3,
     "ANY" = -2,
     "UNKNOWN" = -1,
     "NULL" = 0,
@@ -211,8 +214,8 @@ enum FCTYPE {
     "PRIVACY" = 8,
     "ADDFRIENDREQ" = 9,
     "USERNAMELOOKUP" = 10,
-    "BROADCASTPROFILE" = 11,
     "ZBAN" = 11,
+    "BROADCASTPROFILE" = 11,
     "BROADCASTNEWS" = 12,
     "ANNOUNCE" = 13,
     "MANAGELIST" = 14,
@@ -264,8 +267,8 @@ enum FCTYPE {
     "LISTBANS" = 59,
     "UNBAN" = 60,
     "SETWELCOME" = 61,
-    "CHANOP" = 62,
     "PERMABAN" = 62,
+    "CHANOP" = 62,
     "LISTCHAN" = 63,
     "TAGS" = 64,
     "SETPCODE" = 65,
@@ -293,10 +296,10 @@ enum FCTYPE {
 }
 
 enum FCUCR {
-    "CREATOR" = 0,
     "VM_LOUNGE" = 0,
-    "VM_MYWEBCAM" = 1,
+    "CREATOR" = 0,
     "FRIENDS" = 1,
+    "VM_MYWEBCAM" = 1,
     "MODELS" = 2,
     "PREMIUMS" = 4,
     "BASICS" = 8,
@@ -326,8 +329,8 @@ enum FCVIDEO {
     "RX_VOY" = 92,
     "RX_GRP" = 93,
     "NULL" = 126,
-    "OFFLINE" = 127,
     "UNKNOWN" = 127,
+    "OFFLINE" = 127,
 }
 
 enum FCWINDOW {

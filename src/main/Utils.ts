@@ -15,10 +15,15 @@ function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) =>
     } else {
         taggedMsg += ("] " + msg);
     }
-    if (consoleFormatter) {
-        console.log(consoleFormatter(taggedMsg));
-    } else {
-        console.log(taggedMsg);
+
+    // Explicitly passing null, not undefined, as the consoleFormatter
+    // means to skip the console output completely
+    if (consoleFormatter !== null) {
+        if (consoleFormatter) {
+            console.log(consoleFormatter(taggedMsg));
+        } else {
+            console.log(taggedMsg);
+        }
     }
 
     if (fileRoot !== undefined) {

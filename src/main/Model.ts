@@ -13,7 +13,6 @@ class Model implements NodeJS.EventEmitter {
     public uid: number;    // This Model's user id
     public nm: string;     // The Model's name
     public tags: string[] = []; // Tags are not session specific
-    private client: Client;
 
     // Models, and other members, can be logged on more than once. For example, in
     // multiple browsers, etc. In those cases, we'll be getting distinct FCVIDEO
@@ -67,14 +66,13 @@ class Model implements NodeJS.EventEmitter {
     // A registry of all known models that is built up as we receive
     // model information from the server.  This should not be accessed
     // directly.  Use the Model.getModel() method instead.
-    private static knownModels: { [index: number]: Model } = {};
+    private static knownModels: Map<number, Model> = new Map() as Map<number, Model>;
 
     // Constructs a new model with the given user id and, optionally, a
     // SESSIONSTATE or TAGS packet containing the initial model details.
     constructor(uid: number, packet?: Packet) {
         this.uid = uid;
         if (packet !== undefined) {
-            this.client = packet.client;
             this.mergePacket(packet);
         }
     }
@@ -83,23 +81,24 @@ class Model implements NodeJS.EventEmitter {
     // the model instance if it does not already exist.
     public static getModel(id: any, createIfNecessary: boolean = true): Model {
         if (typeof id === "string") { id = parseInt(id); }
-        if (createIfNecessary) {
-            Model.knownModels[id] = Model.knownModels[id] || new Model(id);
+        if (Model.knownModels.has(id)) {
+            return Model.knownModels.get(id);
+        } else if (createIfNecessary) {
+            Model.knownModels.set(id, new Model(id));
+            return Model.knownModels.get(id);
         }
-        return Model.knownModels[id];
+        return undefined;
     }
 
     // Retrieves a list of models matching the given filter.
     public static findModels(filter: (model: Model) => boolean): Model[] {
         let models: Model[] = [];
 
-        for (let id in Model.knownModels) {
-            if (Model.knownModels.hasOwnProperty(id)) {
-                if (filter(Model.knownModels[id])) {
-                    models.push(Model.knownModels[id]);
-                }
+        Model.knownModels.forEach((m) => {
+            if (filter(m)) {
+                models.push(m);
             }
-        }
+        });
 
         return models;
     }
@@ -153,10 +152,6 @@ class Model implements NodeJS.EventEmitter {
     // as they contain useful information like if a private is true private or
     // if guests or basics are muted or if the model software is being used.
     public mergePacket(packet: Packet): void {
-        if (this.client === undefined && packet.client !== undefined) {
-            this.client = packet.client;
-        }
-
         // Find the session being updated by this packet
         let previousSession = this.bestSession;
         let currentSessionId: number;
@@ -283,6 +278,30 @@ class Model implements NodeJS.EventEmitter {
         });
     }
 
+    // Purge all session state and start again
+    public reset(): void {
+        // Set all online sessions that are not the bestSession to offline
+        this.knownSessions.forEach((details) => {
+            if (details.sid !== this.bestSessionId && details.vs !== FCVIDEO.OFFLINE) {
+                details.vs = FCVIDEO.OFFLINE;
+            }
+        });
+
+        // Merge an empty offline packet into bestSession so that all the registered
+        // event handlers for .bestSession property changes will be fired and user
+        // scripts will have a chance to know they need to re-join rooms, etc, when
+        // the connection is restored.
+        let blank = new Packet(FCTYPE.SESSIONSTATE, 0, 0, 0, 0, 0, { sid: this.bestSessionId, uid: this.uid, vs: FCVIDEO.OFFLINE } as Message);
+        this.mergePacket(blank);
+    }
+
+    // Purge all session state for all models
+    public static reset(): void {
+        Model.knownModels.forEach((m) => {
+            m.reset();
+        });
+    }
+
     private static whenMap: Map<whenFilter, whenMapEntry> = new Map() as Map<whenFilter, whenMapEntry>;
     // Registers an onTrue method to be called whenever condition returns true for any model
     // and, optionally, an onFalseAfterTrue method to be called when condition had been true
@@ -327,14 +346,7 @@ class Model implements NodeJS.EventEmitter {
     }
 
     public toString(): string {
-        function censor(key: string, value: any) {
-            if (key === "client") {
-                // This would lead to a circular reference
-                return undefined;
-            }
-            return value;
-        }
-        return JSON.stringify(this, censor);
+        return JSON.stringify(this);
     }
 }
 

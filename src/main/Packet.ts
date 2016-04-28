@@ -11,7 +11,6 @@ declare var unescape: escape;
 
 // Packet represents a single, complete message received from the chat server
 class Packet {
-    public client: Client;
     public FCType: FCTYPE;     // The message type
     public nFrom: number;      // Who sent the message (unclear what this actually represents, but it looks like a session id)
     public nTo: number;        // Who the message is for (almost always your own session id)
@@ -25,9 +24,7 @@ class Packet {
     private _pMessage: string;
     private _chatString: string;
 
-    constructor(client: Client, FCType: FCTYPE, nFrom: number, nTo: number, nArg1: number, nArg2: number, sPayload: number, sMessage: AnyMessage) {
-        this.client = client; // @TODO - Break this circular reference, for now it's used in .aboutModel
-
+    constructor(FCType: FCTYPE, nFrom: number, nTo: number, nArg1: number, nArg2: number, sPayload: number, sMessage: AnyMessage) {
         this.FCType = FCType;
         this.nFrom = nFrom;
         this.nTo = nTo;
@@ -186,10 +183,6 @@ class Packet {
 
     public toString(): string {
         function censor(key: string, value: any) {
-            if (key === "client") {
-                // Prevent a circular reference
-                return undefined;
-            }
             if (key === "FCType") {
                 // Replace the numerical FCType value with it's more readable textual form
                 return FCTYPE[this.FCType];

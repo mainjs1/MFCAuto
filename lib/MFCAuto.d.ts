@@ -40,6 +40,7 @@ declare class Client implements NodeJS.EventEmitter {
     leaveRoom(id: number): void;
     connect(doLogin?: boolean): Promise<{}>;
     login(username?: string, password?: string): void;
+    private hookModelsLoaded();
     connectAndWaitForModels(): Promise<{}>;
     disconnect(): void;
 }
@@ -120,8 +121,8 @@ declare enum FCCHAN {
     "ERR_NOTALLOWED" = 6,
     "ERR_CONTENT" = 7,
     "HISTORY" = 8,
-    "CAMSTATE" = 16,
     "LIST" = 16,
+    "CAMSTATE" = 16,
     "WELCOME" = 32,
     "BATCHPART" = 64,
     "EXT_USERNAME" = 128,
@@ -232,6 +233,9 @@ declare enum FCSERV {
     "TRANS_RESV3" = 32768,
 }
 declare enum FCTYPE {
+    "CLIENT_DISCONNECTED" = -5,
+    "CLIENT_MODELSLOADED" = -4,
+    "CLIENT_CONNECTED" = -3,
     "ANY" = -2,
     "UNKNOWN" = -1,
     "NULL" = 0,
@@ -245,8 +249,8 @@ declare enum FCTYPE {
     "PRIVACY" = 8,
     "ADDFRIENDREQ" = 9,
     "USERNAMELOOKUP" = 10,
-    "BROADCASTPROFILE" = 11,
     "ZBAN" = 11,
+    "BROADCASTPROFILE" = 11,
     "BROADCASTNEWS" = 12,
     "ANNOUNCE" = 13,
     "MANAGELIST" = 14,
@@ -298,8 +302,8 @@ declare enum FCTYPE {
     "LISTBANS" = 59,
     "UNBAN" = 60,
     "SETWELCOME" = 61,
-    "CHANOP" = 62,
     "PERMABAN" = 62,
+    "CHANOP" = 62,
     "LISTCHAN" = 63,
     "TAGS" = 64,
     "SETPCODE" = 65,
@@ -326,10 +330,10 @@ declare enum FCTYPE {
     "LOGOUT" = 99,
 }
 declare enum FCUCR {
-    "CREATOR" = 0,
     "VM_LOUNGE" = 0,
-    "VM_MYWEBCAM" = 1,
+    "CREATOR" = 0,
     "FRIENDS" = 1,
+    "VM_MYWEBCAM" = 1,
     "MODELS" = 2,
     "PREMIUMS" = 4,
     "BASICS" = 8,
@@ -357,8 +361,8 @@ declare enum FCVIDEO {
     "RX_VOY" = 92,
     "RX_GRP" = 93,
     "NULL" = 126,
-    "OFFLINE" = 127,
     "UNKNOWN" = 127,
+    "OFFLINE" = 127,
 }
 declare enum FCWINDOW {
     "NO_USER_PM" = 20,
@@ -465,7 +469,6 @@ declare class Model implements NodeJS.EventEmitter {
     uid: number;
     nm: string;
     tags: string[];
-    private client;
     private knownSessions;
     addListener: (event: string, listener: Function) => this;
     on: (event: string, listener: Function) => this;
@@ -496,6 +499,8 @@ declare class Model implements NodeJS.EventEmitter {
     bestSession: ModelSessionDetails;
     mergePacket(packet: Packet): void;
     private purgeOldSessions();
+    reset(): void;
+    static reset(): void;
     private static whenMap;
     static when(condition: whenFilter, onTrue: whenCallback, onFalseAfterTrue?: whenCallback): void;
     static removeWhen(condition: (m: Model) => boolean): boolean;
@@ -525,7 +530,6 @@ interface ModelSessionDetails extends BaseMessage, ModelDetailsMessage, UserDeta
     [index: string]: number | string | boolean;
 }
 declare class Packet {
-    client: Client;
     FCType: FCTYPE;
     nFrom: number;
     nTo: number;
@@ -536,7 +540,7 @@ declare class Packet {
     private _aboutModel;
     private _pMessage;
     private _chatString;
-    constructor(client: Client, FCType: FCTYPE, nFrom: number, nTo: number, nArg1: number, nArg2: number, sPayload: number, sMessage: AnyMessage);
+    constructor(FCType: FCTYPE, nFrom: number, nTo: number, nArg1: number, nArg2: number, sPayload: number, sMessage: AnyMessage);
     aboutModel: Model;
     private _parseEmotes(msg);
     pMessage: string;

@@ -33,6 +33,9 @@ enum STATE {
 """
 
 #Add our own constants...
+constantMap.setdefault("FCTYPE", dict())["CLIENT_DISCONNECTED"] = -5
+constantMap.setdefault("FCTYPE", dict())["CLIENT_MODELSLOADED"] = -4
+constantMap.setdefault("FCTYPE", dict())["CLIENT_CONNECTED"] = -3
 constantMap.setdefault("FCTYPE", dict())["ANY"] = -2
 constantMap.setdefault("FCTYPE", dict())["UNKNOWN"] = -1
 

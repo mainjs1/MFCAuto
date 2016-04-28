@@ -234,7 +234,6 @@ class Client implements NodeJS.EventEmitter {
                 }
             }
             this._packetReceived(new Packet(
-                this, // Packet needs to look up certain values in the Client object instance
                 intParams[1], // FCType
                 intParams[2], // nFrom
                 intParams[3], // nTo
@@ -505,8 +504,10 @@ class Client implements NodeJS.EventEmitter {
 
             this.ensureServerConfigIsLoaded().then(() => {
                 let chatServer = this.serverConfig.chat_servers[Math.floor(Math.random() * this.serverConfig.chat_servers.length)];
-
                 this.log("Connecting to MyFreeCams chat server " + chatServer + "...");
+
+                this.hookModelsLoaded();
+
                 this.client = this.net.connect(8100, chatServer + ".myfreecams.com", () => { // 'connect' listener
                     this.client.on("data", (data: any) => {
                         this._readData(data);
@@ -525,6 +526,8 @@ class Client implements NodeJS.EventEmitter {
                         } else {
                             this.manualDisconnect = false;
                         }
+                        this.emit("CLIENT_DISCONNECTED");
+                        Model.reset();
                     });
 
                     // Connecting without logging in is the rarer case, so make the default to log in
@@ -534,6 +537,7 @@ class Client implements NodeJS.EventEmitter {
 
                     // Also should make this an optional separate function too (maybe, maybe not)
                     this.keepAlive = setInterval(function() { this.TxCmd(FCTYPE.NULL, 0, 0, 0); }.bind(this), 120 * 1000);
+                    this.emit("CLIENT_CONNECTED");
                     resolve();
                 });
             });
@@ -552,6 +556,31 @@ class Client implements NodeJS.EventEmitter {
         this.TxCmd(FCTYPE.LOGIN, 0, 20071025, 0, this.username + ":" + this.password);
     }
 
+    private hookModelsLoaded() {
+        let completedModels = false;
+        let completedFriends = true;
+        function modelListFinished(packet: Packet) {
+            // nTo of 2 means these are metrics for friends
+            // nTo of 20 means these are metrics for online models in general
+            // nTo of 64 means something else that I'm not sure about, maybe region hidden models?
+            if (packet.nTo === 2) {
+                if (packet.nArg1 !== packet.nArg2) {
+                    completedFriends = false;
+                } else {
+                    completedFriends = true;
+                }
+            }
+            if (packet.nTo === 20 && packet.nArg1 === packet.nArg2) {
+                completedModels = true;
+            }
+            if (completedModels && completedFriends) {
+                this.removeListener("METRICS", modelListFinished);
+                this.emit("CLIENT_MODELSLOADED");
+            }
+        }
+        this.on("METRICS", modelListFinished.bind(this));
+    }
+
     // Connects to MFC and logs in, just like this.connect(true),
     // but in this version the callback is not invoked immediately
     // on socket connection, but instead when the initial list of
@@ -565,28 +594,8 @@ class Client implements NodeJS.EventEmitter {
             throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
         }
         return new Promise((resolve, reject) => {
-            let completedModels = false;
-            let completedFriends = true;
-            function modelListFinished(packet: Packet) {
-                // nTo of 2 means these are metrics for friends
-                // nTo of 20 means these are metrics for online models in general
-                // nTo of 64 means something else that I'm not sure about, maybe region hidden models?
-                if (packet.nTo === 2) {
-                    if (packet.nArg1 !== packet.nArg2) {
-                        completedFriends = false;
-                    } else {
-                        completedFriends = true;
-                    }
-                }
-                if (packet.nTo === 20 && packet.nArg1 === packet.nArg2) {
-                    completedModels = true;
-                }
-                if (completedModels && completedFriends) {
-                    this.removeListener("METRICS", modelListFinished);
-                    resolve();
-                }
-            }
-            this.on("METRICS", modelListFinished.bind(this));
+            this.hookModelsLoaded();
+            this.once("CLIENT_MODELSLOADED", resolve);
             this.connect(true);
         });
     }
