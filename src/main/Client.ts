@@ -594,7 +594,6 @@ class Client implements NodeJS.EventEmitter {
             throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
         }
         return new Promise((resolve, reject) => {
-            this.hookModelsLoaded();
             this.once("CLIENT_MODELSLOADED", resolve);
             this.connect(true);
         });
