@@ -12,6 +12,7 @@ declare class Client implements NodeJS.EventEmitter {
     private client;
     private keepAlive;
     private manualDisconnect;
+    private static userQueryId;
     constructor(username?: string, password?: string);
     addListener: (event: string, listener: Function) => this;
     on: (event: string, listener: Function) => this;
@@ -38,6 +39,7 @@ declare class Client implements NodeJS.EventEmitter {
     sendPM(id: number, msg: string): void;
     joinRoom(id: number): void;
     leaveRoom(id: number): void;
+    queryUser(user: string | number): Promise<{}>;
     connect(doLogin?: boolean): Promise<{}>;
     login(username?: string, password?: string): void;
     private hookModelsLoaded();

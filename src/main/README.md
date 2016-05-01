@@ -84,6 +84,52 @@ Sends "msg" to a model (or any user by ID) via PM.  This message could fail to b
 
 ---
 
+### queryUser(user: string | number): Promise
+Looks up a user by username or id number and resolves with details for that user, or undefined if the user does not exist on MFC. If the user is a model, this will also have the side effect of updating her MFCAuto state before the promise is resolved.
+
+Because this method supports querying for normal users as well as models, it does not resolve with a Model instance, but rather a [Message](https://github.com/ZombieAlex/MFCAuto/blob/master/src/main/sMessages.ts#L50) instead. If you were querying a model, that message can be converted to her full instance as seen below. If you were querying a member, note that the Message object has a .vs property which will tell that user's current state exactly like a model.bestSession.vs property would.
+
+A user does not have to be online to be queried.
+
+```javascript
+// Query a user, which happens to be a model, by name
+client.queryUser("AspenRae").then((msg) => {
+    if (msg === undefined) {
+        console.log("AspenRae probably temporarily changed her name");
+    } else {
+        //Get the full Model instance for her
+        let AspenRae = mfc.Model.getModel(msg.uid);
+        //Do stuff here...
+    }
+});
+
+// Query a user by ID number
+client.queryUser(3111899).then((msg) => {
+    console.log(JSON.stringify(msg));
+    //Will print something like:
+    //  {"sid":0,"uid":3111899,"nm":"AspenRae","lv":4,"vs":127}
+});
+
+// Query a member by name and check their status
+client.queryUser("MyPremiumMemberFriend").then((msg) => {
+    if (msg) {
+        if (msg.vs !== mfc.STATE.Offline) {
+            console.log("My friend is online!");
+        } else {
+            console.log("My friend is offline");
+        }
+    } else {
+        console.log("My friend no longer exists by that name");
+    }
+});
+
+// Force update a model's status, without caring about the result here
+// Potentially useful when your logic is in model state change handlers
+client.queryUser(3111899);
+```
+
+---
+
 ## Model class
 
 ### static getModel(id: number): Model

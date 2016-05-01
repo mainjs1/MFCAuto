@@ -20,6 +20,7 @@ class Client implements NodeJS.EventEmitter {
     private client: any;
     private keepAlive: number;
     private manualDisconnect: boolean;
+    private static userQueryId: number;
 
     // By default, this client will log in as a guest.
     //
@@ -311,12 +312,12 @@ class Client implements NodeJS.EventEmitter {
         return new Promise((resolve, reject) => {
             let http: any = require("http");
             let load: any = require("load");
-            http.get(url, function(res: any) {
+            http.get(url, function (res: any) {
                 let contents = "";
-                res.on("data", function(chunk: string) {
+                res.on("data", function (chunk: string) {
                     contents += chunk;
                 });
-                res.on("end", function() {
+                res.on("end", function () {
                     try {
                         if (massager !== undefined) {
                             contents = massager(contents);
@@ -327,7 +328,7 @@ class Client implements NodeJS.EventEmitter {
                         reject(e);
                     }
                 });
-            }).on("error", function(e: any) {
+            }).on("error", function (e: any) {
                 reject(e);
             });
         });
@@ -487,6 +488,41 @@ class Client implements NodeJS.EventEmitter {
         this.TxCmd(FCTYPE.JOINCHAN, 0, id, FCCHAN.PART); // @TODO - Confirm that this works, it's not been tested
     }
 
+    // Looks up a user by username or id number and resolves with the Packet response.
+    // If the user is a model, this will also have the side effect of updating her
+    // MFCAuto state before the promise is resolved.
+    public queryUser(user: string | number) {
+        Client.userQueryId = Client.userQueryId || 20;
+        let queryId = Client.userQueryId++;
+        return new Promise((resolve, reject) => {
+            let handler = (p: Packet) => {
+                // If this is our response
+                if (p.nArg1 === queryId) {
+                    this.removeListener("USERNAMELOOKUP", handler);
+                    if (typeof p.sMessage === "string" || typeof p.sMessage === undefined) {
+                        // These states mean the user wasn't found.
+                        // Be a little less ambiguous in our response by resolving
+                        // with undefined in both cases.
+                        resolve(undefined);
+                    } else {
+                        resolve(p.sMessage);
+                    }
+                }
+            };
+            this.on("USERNAMELOOKUP", handler);
+            switch (typeof user) {
+                case "number":
+                    this.TxCmd(FCTYPE.USERNAMELOOKUP, 0, queryId, user as number);
+                    break;
+                case "string":
+                    this.TxCmd(FCTYPE.USERNAMELOOKUP, 0, queryId, 0, user as string);
+                    break;
+                default:
+                    throw new Error("Invalid argument");
+            }
+        });
+    }
+
     // Connects to MFC and optionally logs in with the credentials you supplied when
     // constructing this Client.
     //
@@ -536,7 +572,7 @@ class Client implements NodeJS.EventEmitter {
                     }
 
                     // Also should make this an optional separate function too (maybe, maybe not)
-                    this.keepAlive = setInterval(function() { this.TxCmd(FCTYPE.NULL, 0, 0, 0); }.bind(this), 120 * 1000);
+                    this.keepAlive = setInterval(function () { this.TxCmd(FCTYPE.NULL, 0, 0, 0); }.bind(this), 120 * 1000);
                     this.emit("CLIENT_CONNECTED");
                     resolve();
                 });

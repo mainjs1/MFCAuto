@@ -37,7 +37,7 @@ describe("Startup Scenarios", () => {
     });
 });
 
-describe("Connected Scenarios", function() {
+describe("Connected Scenarios", function () {
     this.timeout(7000);
     let client = new mfc.Client();
     let queen;
@@ -118,6 +118,34 @@ describe("Connected Scenarios", function() {
             done();
         });
 
+        it("should be able to query users by name", (done) => {
+            client.queryUser(queen.nm).then((response) => {
+                assert.strictEqual(response.uid, queen.uid);
+                done();
+            });
+        });
+
+        it("should be able to query users by id", (done) => {
+            client.queryUser(queen.uid).then((response) => {
+                assert.strictEqual(response.nm, queen.nm);
+                done();
+            });
+        });
+
+        it("should gracefully handle a user query for a non-existent user name", (done) => {
+            client.queryUser("RandomNameThatWouldNeverBeReal").then((response) => {
+                assert.strictEqual(response, undefined);
+                done();
+            });
+        });
+
+        it("should gracefully handle a user query for a non-existent user id", (done) => {
+            client.queryUser(1).then((response) => {
+                assert.strictEqual(response, undefined);
+                done();
+            });
+        });
+
         /*
         @TODO - More tests...
         Add a callback to the joinroom/sendChat/sendPM functions and ensure we
@@ -137,7 +165,7 @@ describe("Connected Scenarios", function() {
         */
     });
 
-    describe("Model", function() {
+    describe("Model", function () {
         this.timeout(60000);
         // it("should be able to listen for a specific model state change (this test frequently times out)", function(done) {
         //     mfc.Model.getModel(queen.uid).on("rc", function(model/*, oldstate, newstate*/) {
