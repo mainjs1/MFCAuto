@@ -499,7 +499,7 @@ class Client implements NodeJS.EventEmitter {
                 // If this is our response
                 if (p.nArg1 === queryId) {
                     this.removeListener("USERNAMELOOKUP", handler);
-                    if (typeof p.sMessage === "string" || typeof p.sMessage === undefined) {
+                    if (typeof p.sMessage === "string" || p.sMessage === undefined) {
                         // These states mean the user wasn't found.
                         // Be a little less ambiguous in our response by resolving
                         // with undefined in both cases.
