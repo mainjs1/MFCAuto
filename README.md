@@ -44,6 +44,20 @@ client.connect(false).then(function(){
 });
 ```
 
+Note: As of MFCAuto 3.1.0, there is cleaner way to accomplish the same thing as the above:
+
+```javascript
+var mfc = require("MFCAuto");
+var client = new mfc.Client();
+
+client.connect(false)
+    .then(() => client.queryUser("AspenRae"))
+    .then((msg) => {
+        console.log(JSON.stringify(msg));
+        client.disconnect();
+    });
+```
+
 ---
 
 ### Log all chat in a room
