@@ -3,3 +3,4 @@ src/main/tsconfig.json
 src/test/packetLog.txt
 packetLog.txt
 src/test/cred.txt
+*.map
