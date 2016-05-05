@@ -34,7 +34,7 @@ client.on("ANY", (packet) => {
     log(packet.toString(), "packetLog", null);
 });
 
-client.connectAndWaitForModels(() => {
+client.connectAndWaitForModels().then(() => {
     //Find the most popular model in free chat right now
     let freeModels = mfc.Model.findModels((m) => m.bestSession.vs === 0);
     freeModels.sort((a, b) => a.bestSession.rc - b.bestSession.rc);

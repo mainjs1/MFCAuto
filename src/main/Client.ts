@@ -21,6 +21,7 @@ class Client implements NodeJS.EventEmitter {
     private keepAlive: number;
     private manualDisconnect: boolean;
     private static userQueryId: number;
+    private trafficCounter: number;
 
     // By default, this client will log in as a guest.
     //
@@ -83,6 +84,7 @@ class Client implements NodeJS.EventEmitter {
     // This is an internal method, don't call it directly.
     private _packetReceived(packet: Packet): void {
         this.log(packet.toString(), true);
+        this.trafficCounter++;
 
         // Special case some packets to update and maintain internal state
         switch (packet.FCType) {
@@ -537,6 +539,7 @@ class Client implements NodeJS.EventEmitter {
             // Reset any read buffers so we are in a consistent state
             this.streamBuffer = new Buffer(0);
             this.streamBufferPosition = 0;
+            this.trafficCounter = 1;
 
             this.ensureServerConfigIsLoaded().then(() => {
                 let chatServer = this.serverConfig.chat_servers[Math.floor(Math.random() * this.serverConfig.chat_servers.length)];
@@ -571,8 +574,27 @@ class Client implements NodeJS.EventEmitter {
                         this.login();
                     }
 
-                    // Also should make this an optional separate function too (maybe, maybe not)
-                    this.keepAlive = setInterval(function () { this.TxCmd(FCTYPE.NULL, 0, 0, 0); }.bind(this), 120 * 1000);
+                    // Keep the server connection alive
+                    this.keepAlive = setInterval(
+                        function () {
+                            if (this.trafficCounter > 0) {
+                                this.TxCmd(FCTYPE.NULL, 0, 0, 0);
+                            } else {
+                                // On rare occasions, I've seen us reach a zombie state with
+                                // a connected socket but no traffic flowing. This is a guard
+                                // against that.
+                                //
+                                // If we haven't received any packets, even a ping response,
+                                // in 2+ minutes, then we may not really be connected anymore.
+                                // Kill the connection and try reconnecting again...
+                                this.log("Server has not responded in over 2 minutes. Trying to reconnect now.");
+                                this.client.end();
+                                this.client = undefined;
+                            }
+                            this.trafficCounter = 0;
+                        }.bind(this),
+                        120 * 1000
+                    );
                     this.emit("CLIENT_CONNECTED");
                     resolve();
                 });
