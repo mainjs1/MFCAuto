@@ -207,6 +207,7 @@ describe("Connected Scenarios", function () {
         });
         it("should be able to process .when events on all models", (done) => {
             let matchedModels = new Set();
+            let isDone = false;
             mfc.Model.when(
                 (m) => m.bestSession.vs === mfc.STATE.Online,
                 (m) => {
@@ -216,7 +217,10 @@ describe("Connected Scenarios", function () {
                 (m) => {
                     mfc.log(`${m.nm} left online`);
                     assert.ok(matchedModels.has(m.uid), "We got an onFalseAfterTrue callback for a model that never matched the filter to begin with?");
-                    done();
+                    if (!isDone) {
+                        done();
+                        isDone = true;
+                    }
                 }
             );
         });

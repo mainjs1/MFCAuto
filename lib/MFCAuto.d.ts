@@ -34,6 +34,7 @@ declare class Client implements NodeJS.EventEmitter {
     private ensureEmoteParserIsLoaded();
     private ensureServerConfigIsLoaded();
     TxCmd(nType: FCTYPE, nTo?: number, nArg1?: number, nArg2?: number, sMsg?: string): void;
+    TxPacket(packet: Packet): void;
     static toUserId(id: number): number;
     static toRoomId(id: number): number;
     sendChat(id: number, msg: string): void;
@@ -42,6 +43,7 @@ declare class Client implements NodeJS.EventEmitter {
     leaveRoom(id: number): void;
     queryUser(user: string | number): Promise<{}>;
     connect(doLogin?: boolean): Promise<{}>;
+    private disconnected();
     login(username?: string, password?: string): void;
     private hookModelsLoaded();
     connectAndWaitForModels(): Promise<{}>;

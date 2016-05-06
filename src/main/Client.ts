@@ -397,7 +397,6 @@ class Client implements NodeJS.EventEmitter {
 
     // Sends a message back to MFC in the expected packet format
     // usually nTo==0, nArg1==0, nArg2==0, sMsg==null
-    // @TODO - Should this use the Packet class instead or as an overload?
     public TxCmd(nType: FCTYPE, nTo: number = 0, nArg1: number = 0, nArg2: number = 0, sMsg?: string): void {
         this.log("TxCmd Sending - nType: " + nType + ", nTo: " + nTo + ", nArg1: " + nArg1 + ", nArg2: " + nArg2 + ", sMsg:" + sMsg, true);
         if (sMsg && (nType === FCTYPE.CMESG || nType === FCTYPE.PMESG)) {
@@ -420,6 +419,10 @@ class Client implements NodeJS.EventEmitter {
         }
 
         this.client.write(buf);
+    }
+
+    public TxPacket(packet: Packet): void {
+        this.TxCmd(packet.FCType, packet.nTo, packet.nArg1, packet.nArg2, JSON.stringify(packet.sMessage));
     }
 
     // Takes a number that might be a user id or a room
@@ -539,7 +542,7 @@ class Client implements NodeJS.EventEmitter {
             // Reset any read buffers so we are in a consistent state
             this.streamBuffer = new Buffer(0);
             this.streamBufferPosition = 0;
-            this.trafficCounter = 1;
+            this.trafficCounter = 0;
 
             this.ensureServerConfigIsLoaded().then(() => {
                 let chatServer = this.serverConfig.chat_servers[Math.floor(Math.random() * this.serverConfig.chat_servers.length)];
@@ -552,21 +555,7 @@ class Client implements NodeJS.EventEmitter {
                         this._readData(data);
                     });
                     this.client.on("end", () => {
-                        clearInterval(this.keepAlive);
-                        if (this.password === "guest" && this.username.startsWith("Guest")) {
-                            // If we had a successful guest login before, we'll have changed
-                            // username to something like Guest12345 or whatever the server assigned
-                            // to us. That is not valid to log in again, so reset it back to guest.
-                            this.username = "guest";
-                        }
-                        if (!this.manualDisconnect) {
-                            this.log("Disconnected from MyFreeCams.  Reconnecting in 30 seconds..."); //  Is 30 seconds reasonable?
-                            setTimeout(this.connect.bind(this), 30000);
-                        } else {
-                            this.manualDisconnect = false;
-                        }
-                        this.emit("CLIENT_DISCONNECTED");
-                        Model.reset();
+                        this.disconnected();
                     });
 
                     // Connecting without logging in is the rarer case, so make the default to log in
@@ -574,32 +563,55 @@ class Client implements NodeJS.EventEmitter {
                         this.login();
                     }
 
-                    // Keep the server connection alive
-                    this.keepAlive = setInterval(
-                        function () {
-                            if (this.trafficCounter > 0) {
-                                this.TxCmd(FCTYPE.NULL, 0, 0, 0);
-                            } else {
-                                // On rare occasions, I've seen us reach a zombie state with
-                                // a connected socket but no traffic flowing. This is a guard
-                                // against that.
-                                //
-                                // If we haven't received any packets, even a ping response,
-                                // in 2+ minutes, then we may not really be connected anymore.
-                                // Kill the connection and try reconnecting again...
-                                this.log("Server has not responded in over 2 minutes. Trying to reconnect now.");
-                                this.client.end();
-                                this.client = undefined;
-                            }
-                            this.trafficCounter = 0;
-                        }.bind(this),
-                        120 * 1000
-                    );
                     this.emit("CLIENT_CONNECTED");
                     resolve();
                 });
+
+                // Keep the server connection alive
+                this.keepAlive = setInterval(
+                    function () {
+                        if (this.trafficCounter > 0) {
+                            this.TxCmd(FCTYPE.NULL, 0, 0, 0);
+                        } else {
+                            // On rare occasions, I've seen us reach a zombie state with
+                            // a connected socket but no traffic flowing. This is a guard
+                            // against that.
+                            //
+                            // If we haven't received any packets, even a ping response,
+                            // in 2+ minutes, then we may not really be connected anymore.
+                            // Kill the connection and try reconnecting again...
+                            this.log("Server has not responded in over 2 minutes. Trying to reconnect now.");
+                            this.client.removeAllListeners("end");
+                            this.client.end();
+                            this.client = undefined;
+                            this.disconnected();
+                        }
+                        this.trafficCounter = 0;
+                    }.bind(this),
+                    120 * 1000
+                );
             });
         });
+    }
+
+    // Private method called when we lose a valid connection to the chat server
+    // it handles the reconnect logic
+    private disconnected() {
+        clearInterval(this.keepAlive);
+        if (this.password === "guest" && this.username.startsWith("Guest")) {
+            // If we had a successful guest login before, we'll have changed
+            // username to something like Guest12345 or whatever the server assigned
+            // to us. That is not valid to log in again, so reset it back to guest.
+            this.username = "guest";
+        }
+        if (!this.manualDisconnect) {
+            this.log("Disconnected from MyFreeCams.  Reconnecting in 30 seconds..."); //  Is 30 seconds reasonable?
+            setTimeout(this.connect.bind(this), 30000);
+        } else {
+            this.manualDisconnect = false;
+        }
+        this.emit("CLIENT_DISCONNECTED");
+        Model.reset();
     }
 
     // Logs in to MFC.  This should only be called after Client connect(false);
@@ -637,6 +649,8 @@ class Client implements NodeJS.EventEmitter {
             }
         }
         this.on("METRICS", modelListFinished.bind(this));
+        // @TODO - Check if anything else is needed to wait for 'bookmarked'
+        // models...
     }
 
     // Connects to MFC and logs in, just like this.connect(true),
@@ -645,8 +659,6 @@ class Client implements NodeJS.EventEmitter {
     // online models has been fully populated.
     // If you're logged in as a user with friended models, this will
     // also wait until your friends list is completely loaded.
-    // @TODO - Check if anything else is needed to wait for 'bookmarked'
-    // models...
     public connectAndWaitForModels() {
         if (arguments.length !== 0) {
             throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
