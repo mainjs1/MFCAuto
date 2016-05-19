@@ -22,6 +22,7 @@ class Client implements NodeJS.EventEmitter {
     private manualDisconnect: boolean;
     private static userQueryId: number;
     private trafficCounter: number;
+    private static connectedClientCount = 0;
 
     // By default, this client will log in as a guest.
     //
@@ -563,6 +564,7 @@ class Client implements NodeJS.EventEmitter {
                         this.login();
                     }
 
+                    Client.connectedClientCount++;
                     this.emit("CLIENT_CONNECTED");
                     resolve();
                 });
@@ -570,7 +572,7 @@ class Client implements NodeJS.EventEmitter {
                 // Keep the server connection alive
                 this.keepAlive = setInterval(
                     function () {
-                        if (this.trafficCounter > 0) {
+                        if (this.trafficCounter > 2) {
                             this.TxCmd(FCTYPE.NULL, 0, 0, 0);
                         } else {
                             // On rare occasions, I've seen us reach a zombie state with
@@ -598,6 +600,7 @@ class Client implements NodeJS.EventEmitter {
     // it handles the reconnect logic
     private disconnected() {
         clearInterval(this.keepAlive);
+        Client.connectedClientCount--;
         if (this.password === "guest" && this.username.startsWith("Guest")) {
             // If we had a successful guest login before, we'll have changed
             // username to something like Guest12345 or whatever the server assigned
@@ -611,7 +614,9 @@ class Client implements NodeJS.EventEmitter {
             this.manualDisconnect = false;
         }
         this.emit("CLIENT_DISCONNECTED");
-        Model.reset();
+        if (Client.connectedClientCount === 0) {
+            Model.reset();
+        }
     }
 
     // Logs in to MFC.  This should only be called after Client connect(false);
@@ -648,7 +653,11 @@ class Client implements NodeJS.EventEmitter {
                 this.emit("CLIENT_MODELSLOADED");
             }
         }
-        this.on("METRICS", modelListFinished.bind(this));
+        if (!this.listeners("METRICS").find((func) => func.toString() === modelListFinished.toString())) {
+            // Only add this listener if the same listener hasn't already been added
+            // this prevents a leak when the servers are down and we're stuck in the connect loop
+            this.on("METRICS", modelListFinished.bind(this));
+        }
         // @TODO - Check if anything else is needed to wait for 'bookmarked'
         // models...
     }
