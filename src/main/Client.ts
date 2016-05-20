@@ -22,6 +22,7 @@ class Client implements NodeJS.EventEmitter {
     private manualDisconnect: boolean;
     private static userQueryId: number;
     private trafficCounter: number;
+    private loginPacketReceived: boolean;
     private static connectedClientCount = 0;
 
     // By default, this client will log in as a guest.
@@ -43,6 +44,7 @@ class Client implements NodeJS.EventEmitter {
         this.streamBuffer = new Buffer(0);
         this.streamBufferPosition = 0;
         this.manualDisconnect = false;
+        this.loginPacketReceived = false;
     }
 
     // Instance EventEmitter methods
@@ -99,6 +101,7 @@ class Client implements NodeJS.EventEmitter {
                     this.uid = packet.nArg2;
                     this.username = packet.sMessage as string;
                     this.log("Login handshake completed. Logged in as '" + this.username + "' with sessionId " + this.sessionId);
+                    this.loginPacketReceived = true;
                 }
                 break;
             case FCTYPE.DETAILS:
@@ -572,7 +575,7 @@ class Client implements NodeJS.EventEmitter {
                 // Keep the server connection alive
                 this.keepAlive = setInterval(
                     function () {
-                        if (this.trafficCounter > 2) {
+                        if (this.trafficCounter > 2 && (this.loginPacketReceived || !doLogin)) {
                             this.TxCmd(FCTYPE.NULL, 0, 0, 0);
                         } else {
                             // On rare occasions, I've seen us reach a zombie state with
@@ -601,6 +604,7 @@ class Client implements NodeJS.EventEmitter {
     private disconnected() {
         clearInterval(this.keepAlive);
         Client.connectedClientCount--;
+        this.loginPacketReceived = false;
         if (this.password === "guest" && this.username.startsWith("Guest")) {
             // If we had a successful guest login before, we'll have changed
             // username to something like Guest12345 or whatever the server assigned
