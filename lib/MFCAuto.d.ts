@@ -16,6 +16,9 @@ declare class Client implements NodeJS.EventEmitter {
     private trafficCounter;
     private loginPacketReceived;
     private static connectedClientCount;
+    private static initialReconnectSeconds;
+    private static maximumReconnectSeconds;
+    private static currentReconnectSeconds;
     constructor(username?: string, password?: string);
     addListener: (event: string, listener: Function) => this;
     on: (event: string, listener: Function) => this;

@@ -24,6 +24,9 @@ class Client implements NodeJS.EventEmitter {
     private trafficCounter: number;
     private loginPacketReceived: boolean;
     private static connectedClientCount = 0;
+    private static initialReconnectSeconds = 15;
+    private static maximumReconnectSeconds = 1920; // 32 Minutes
+    private static currentReconnectSeconds = 15;
 
     // By default, this client will log in as a guest.
     //
@@ -102,6 +105,7 @@ class Client implements NodeJS.EventEmitter {
                     this.username = packet.sMessage as string;
                     this.log("Login handshake completed. Logged in as '" + this.username + "' with sessionId " + this.sessionId);
                     this.loginPacketReceived = true;
+                    Client.currentReconnectSeconds = Client.initialReconnectSeconds;
                 }
                 break;
             case FCTYPE.DETAILS:
@@ -612,8 +616,14 @@ class Client implements NodeJS.EventEmitter {
             this.username = "guest";
         }
         if (!this.manualDisconnect) {
-            this.log("Disconnected from MyFreeCams.  Reconnecting in 30 seconds..."); //  Is 30 seconds reasonable?
-            setTimeout(this.connect.bind(this), 30000);
+            this.log(`Disconnected from MyFreeCams.  Reconnecting in ${Client.currentReconnectSeconds} seconds...`);
+            setTimeout(this.connect.bind(this), Client.currentReconnectSeconds * 1000);
+            // Gradually increase the reconnection time up to Client.maximumReconnectSeconds.
+            // currentReconnectSeconds will be reset to initialReconnectSeconds once we have
+            // successfully logged in.
+            if (Client.currentReconnectSeconds < Client.maximumReconnectSeconds) {
+                Client.currentReconnectSeconds *= 2;
+            }
         } else {
             this.manualDisconnect = false;
         }
