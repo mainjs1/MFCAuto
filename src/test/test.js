@@ -5,7 +5,7 @@
 //@TODO - More response packet validation everywhere
 "use strict";
 let assert = require("assert");
-let mfc = require("../../lib/MFCAuto.js");
+let mfc = require("../../lib/index.js");
 
 describe("Startup Scenarios", () => {
     let client = null;

@@ -1,8 +1,9 @@
 {
   "name": "MFCAuto",
-  "version": "3.1.5",
+  "version": "3.2.0",
   "description": "A module for interacting with MyFreeCams chat servers.",
-  "main": "index.js",
+  "main": "lib/index.js",
+  "typings": "lib/index",
   "dependencies": {
     "load": "^1.0.1",
     "xmlhttprequest": "^1.8.0"

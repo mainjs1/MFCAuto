@@ -1,35 +1,17 @@
-// Various constants and enums used by MFC.  Most of these values can be seen here:
-// http://www.myfreecams.com/_js/mfccore.js
-
-export let MAGIC: number = -2027771214;
-
-// STATE is essentially the same as FCVIDEO but has friendly names
-// for better log messages and code readability
-export enum STATE {
-    FreeChat = 0,            // TX_IDLE
-    // TX_RESET = 1,         // Unused?
-    Away = 2,                // TX_AWAY
-    // TX_CONFIRMING = 11,   // Unused?
-    Private = 12,            // TX_PVT
-    GroupShow = 13,          // TX_GRP
-    // TX_RESERVED = 14,     // Unused?
-    // TX_KILLMODEL = 15,    // Unused?
-    // C2C_ON = 20,          // Unused?
-    // C2C_OFF = 21,         // Unused?
-    Online = 90,             // RX_IDLE
-    // RX_PVT = 91,          // Unused?
-    // RX_VOY = 92,          // Unused?
-    // RX_GRP = 93,          // Unused?
-    // NULL = 126,           // Unused?
-    Offline = 127            // OFFLINE
+export declare let MAGIC: number;
+export declare enum STATE {
+    FreeChat = 0,
+    Away = 2,
+    Private = 12,
+    GroupShow = 13,
+    Online = 90,
+    Offline = 127,
 }
-
-export enum DISPLAY {
+export declare enum DISPLAY {
     "PM_INLINE_WHISPER" = 1,
     "PM_INLINE_ALL" = 2,
 }
-
-export enum EVSESSION {
+export declare enum EVSESSION {
     "NONE" = 0,
     "PRIVATE" = 1,
     "VOYEUR" = 2,
@@ -43,8 +25,7 @@ export enum EVSESSION {
     "UPDATE" = 103,
     "STOP" = 104,
 }
-
-export enum FCACCEPT {
+export declare enum FCACCEPT {
     "NOBODY" = 0,
     "FRIENDS" = 1,
     "ALL" = 2,
@@ -55,15 +36,13 @@ export enum FCACCEPT {
     "V2_BASICS" = 128,
     "V2_ALL" = 240,
 }
-
-export enum FCBAN {
+export declare enum FCBAN {
     "NONE" = 0,
     "TEMP" = 1,
     "60DAY" = 2,
     "LIFE" = 3,
 }
-
-export enum FCCHAN {
+export declare enum FCCHAN {
     "NOOPT" = 0,
     "JOIN" = 1,
     "ERR_NOCHANNEL" = 2,
@@ -82,14 +61,12 @@ export enum FCCHAN {
     "EXT_USERNAME" = 128,
     "EXT_USERDATA" = 256,
 }
-
-export enum FCERRTYPE {
+export declare enum FCERRTYPE {
     "INVALIDUSER" = 10,
     "NOACCESS" = 11,
     "NOSPACE" = 12,
 }
-
-export enum FCGROUP {
+export declare enum FCGROUP {
     "NONE" = 0,
     "EXPIRED" = 1,
     "BUSY" = 2,
@@ -98,22 +75,19 @@ export enum FCGROUP {
     "UNAVAILABLE" = 5,
     "SESSION" = 9,
 }
-
-export enum FCLEVEL {
+export declare enum FCLEVEL {
     "GUEST" = 0,
     "BASIC" = 1,
     "PREMIUM" = 2,
     "MODEL" = 4,
     "ADMIN" = 5,
 }
-
-export enum FCMODE {
+export declare enum FCMODE {
     "NOPM" = 0,
     "FRIENDPM" = 1,
     "ALLPM" = 2,
 }
-
-export enum FCMODEL {
+export declare enum FCMODEL {
     "NONE" = 0,
     "NOGROUP" = 1,
     "FEATURE1" = 2,
@@ -122,8 +96,7 @@ export enum FCMODEL {
     "FEATURE4" = 16,
     "FEATURE5" = 32,
 }
-
-export enum FCNEWSOPT {
+export declare enum FCNEWSOPT {
     "NONE" = 0,
     "IN_CHAN" = 1,
     "IN_PM" = 2,
@@ -132,16 +105,14 @@ export enum FCNEWSOPT {
     "IN_CHAN_NOPVT" = 8,
     "IN_CHAN_NOGRP" = 16,
 }
-
-export enum FCNOSESS {
+export declare enum FCNOSESS {
     "NONE" = 0,
     "PVT" = 1,
     "GRP" = 2,
     "TRUEPVT" = 4,
     "TOKEN_MIN" = 8,
 }
-
-export enum FCOPT {
+export declare enum FCOPT {
     "NONE" = 0,
     "BOLD" = 1,
     "ITALICS" = 2,
@@ -160,8 +131,7 @@ export enum FCOPT {
     "SMALLCAPS" = 16384,
     "BOOKMARK" = 16384,
 }
-
-export enum FCRESPONSE {
+export declare enum FCRESPONSE {
     "SUCCESS" = 0,
     "ERROR" = 1,
     "NOTICE" = 2,
@@ -176,8 +146,7 @@ export enum FCRESPONSE {
     "NOACCESS" = 11,
     "NOSPACE" = 12,
 }
-
-export enum FCSERV {
+export declare enum FCSERV {
     "NONE" = 0,
     "VIDEO_CAM2CAM" = 1,
     "VIDEO_MODEL" = 2,
@@ -196,8 +165,7 @@ export enum FCSERV {
     "TRANS_RESV2" = 16384,
     "TRANS_RESV3" = 32768,
 }
-
-export enum FCTYPE {
+export declare enum FCTYPE {
     "CLIENT_DISCONNECTED" = -5,
     "CLIENT_MODELSLOADED" = -4,
     "CLIENT_CONNECTED" = -3,
@@ -294,8 +262,7 @@ export enum FCTYPE {
     "DISCONNECTED" = 98,
     "LOGOUT" = 99,
 }
-
-export enum FCUCR {
+export declare enum FCUCR {
     "CREATOR" = 0,
     "VM_LOUNGE" = 0,
     "VM_MYWEBCAM" = 1,
@@ -306,14 +273,12 @@ export enum FCUCR {
     "BASIC" = 8,
     "ALL" = 15,
 }
-
-export enum FCUPDATE {
+export declare enum FCUPDATE {
     "NONE" = 0,
     "MISSMFC" = 1,
     "NEWTIP" = 2,
 }
-
-export enum FCVIDEO {
+export declare enum FCVIDEO {
     "TX_IDLE" = 0,
     "TX_RESET" = 1,
     "TX_AWAY" = 2,
@@ -332,14 +297,12 @@ export enum FCVIDEO {
     "OFFLINE" = 127,
     "UNKNOWN" = 127,
 }
-
-export enum FCWINDOW {
+export declare enum FCWINDOW {
     "NO_USER_PM" = 20,
     "OPTIONS_ADD_FRIEND" = 31,
     "OPTIONS_ADD_IGNORE" = 32,
 }
-
-export enum FCWOPT {
+export declare enum FCWOPT {
     "NONE" = 0,
     "ADD" = 1,
     "REMOVE" = 2,
@@ -359,21 +322,18 @@ export enum FCWOPT {
     "C_RANK" = 4194304,
     "C_SDATE" = 8388608,
 }
-
-export enum HIDE {
+export declare enum HIDE {
     "MODEL_GROUPS_AWAY" = 1,
     "MODEL_GROUPS_PRIVATE" = 2,
     "MODEL_GROUPS_GROUP" = 4,
     "MODEL_GROUPS_PUBLIC" = 8,
 }
-
-export enum LOUNGE {
+export declare enum LOUNGE {
     "MASK_AUTO_CLICK" = 1,
     "MASK_NO_CAMSNAPS" = 2,
     "MASK_LOUNGE_MODE" = 4,
 }
-
-export enum MODEL {
+export declare enum MODEL {
     "LIST_ICON_NEW_MODEL" = 1,
     "LIST_ICON_RECOMMEND" = 2,
     "LIST_ICON_POPULAR" = 4,
@@ -381,19 +341,16 @@ export enum MODEL {
     "LIST_ICON_MISSMFC" = 16,
     "LIST_ICON_TRENDING" = 32,
 }
-
-export enum MODELORDER {
+export declare enum MODELORDER {
     "NONE" = 0,
     "PVT" = 1,
     "TRUEPVT" = 2,
     "GRP" = 4,
 }
-
-export enum MYFREECAMS {
+export declare enum MYFREECAMS {
     "NEWS_USER_ID" = 481462,
 }
-
-export enum MYWEBCAM {
+export declare enum MYWEBCAM {
     "EVERYONE" = 0,
     "ONLYUSERS" = 1,
     "ONLYFRIENDS" = 2,
@@ -401,8 +358,7 @@ export enum MYWEBCAM {
     "FRIENDSANDMODELS" = 4,
     "WHITELIST" = 5,
 }
-
-export enum TKOPT {
+export declare enum TKOPT {
     "NONE" = 0,
     "START" = 1,
     "STOP" = 2,
@@ -421,15 +377,13 @@ export enum TKOPT {
     "TIP_HISTORY" = 65536,
     "HDVIDEO" = 1048576,
 }
-
-export enum USEREXT {
+export declare enum USEREXT {
     "NUM" = 0,
     "STRING" = 1,
     "DATA" = 2,
     "STAMP" = 3,
 }
-
-export enum WEBCAM {
+export declare enum WEBCAM {
     "SECURITY_EVERYONE" = 0,
     "SECURITY_FRIENDS" = 2,
     "SECURITY_MODELS" = 3,
@@ -437,12 +391,10 @@ export enum WEBCAM {
     "SECURITY_ALLOWED" = 5,
     "SECURITY_FRIEND_ID" = 100,
 }
-
-export enum WINDOW {
+export declare enum WINDOW {
     "MODE_DEFAULT" = 0,
     "MODE_DHTML" = 1,
     "MODE_DESKTOP_DHTML" = 1,
     "MODE_BROWSER" = 2,
     "MODE_MOBILE_DHTML" = 2,
 }
-

@@ -8,11 +8,11 @@ constantMap = dict()
 header = """// Various constants and enums used by MFC.  Most of these values can be seen here:
 // http://www.myfreecams.com/_js/mfccore.js
 
-let MAGIC: number = -2027771214;
+export let MAGIC: number = -2027771214;
 
 // STATE is essentially the same as FCVIDEO but has friendly names
 // for better log messages and code readability
-enum STATE {
+export enum STATE {
     FreeChat = 0,            // TX_IDLE
     // TX_RESET = 1,         // Unused?
     Away = 2,                // TX_AWAY
@@ -49,13 +49,10 @@ with urlopen(url) as data:
     with open("Constants.ts", "w") as f:
         f.write(header)
         for fctype in sorted(constantMap):
-            f.write("\nenum {} {{\n".format(fctype))
+            f.write("\nexport enum {} {{\n".format(fctype))
             for subtype, value in sorted(constantMap[fctype].items(), key=lambda x: int(x[1])):
                 f.write('    "{}" = {},\n'.format(subtype, value))
             f.write("}\n")
         f.write("\n")
-        for fctype in sorted(constantMap):
-            f.write("exports.{0} = {0};\n".format(fctype))
-        f.write("exports.STATE = STATE;\n")
 
 print("Done")

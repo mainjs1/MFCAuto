@@ -1,16 +1,14 @@
-// Forward definitions for the TypeScript compiler
-/* @internal */
-interface escape {
-    (text: string): string;
-}
-/* @internal */
-declare var escape: escape;
-/* @internal */
-declare var unescape: escape;
+import {Client} from "./Client";
+import {FCTYPE} from "./Constants";
+import {log} from "./Utils";
+import {Model} from "./Model";
 
+// Forward definitions for the TypeScript compiler
+declare var escape: (text: string) => string;
+declare var unescape: (text: string) => string;
 
 // Packet represents a single, complete message received from the chat server
-class Packet {
+export class Packet {
     public FCType: FCTYPE;     // The message type
     public nFrom: number;      // Who sent the message (unclear what this actually represents, but it looks like a session id)
     public nTo: number;        // Who the message is for (almost always your own session id)
@@ -192,5 +190,3 @@ class Packet {
         return JSON.stringify(this, censor);
     }
 }
-
-exports.Packet = Packet;

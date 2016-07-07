@@ -1,24 +1,18 @@
 {
     "compilerOptions": {
         "target": "es5",
-        "module": "amd",
+        "module": "commonjs",
         "declaration": true,
         "noImplicitAny": true,
-        // "outDir": "./lib",
-        "outFile": "./lib/MFCAuto.js",
+        "outDir": "./lib",
         "sourceMap": true,
         "noLib": false,
         "moduleResolution": "node",
         "stripInternal": true,
         "removeComments": true
     },
-    "files": [
-      "./typings/tsd.d.ts",
-      "./src/main/Client.ts",
-      "./src/main/Constants.ts",
-      "./src/main/Model.ts",
-      "./src/main/Packet.ts",
-      "./src/main/sMessages.ts",
-      "./src/main/Utils.ts"
+    "exclude": [
+        "node_modules",
+        "lib"
     ]
 }

@@ -1,11 +1,17 @@
-/* @internal */
-var EventEmitter: any = require("events").EventEmitter;
-/* @internal */
-var assert = require("assert");
+import {EventEmitter} from "events";
+import {log, applyMixins} from "./Utils";
+import {MAGIC, FCTYPE, FCCHAN} from "./Constants";
+import {Model} from "./Model";
+import {Packet} from "./Packet";
+import * as assert from "assert";
+
+// Forward definitions for the TypeScript compiler
+declare var escape: (text: string) => string;
+declare var unescape: (text: string) => string;
 
 // Creates and maintains a TCP socket connection to MFC chat servers similar to
 // the way the Flash client connects and communicates with MFC.
-class Client implements NodeJS.EventEmitter {
+export class Client implements EventEmitter {
     public sessionId: number;
     public username: string;
     public password: string;
@@ -54,12 +60,15 @@ class Client implements NodeJS.EventEmitter {
     public addListener: (event: string, listener: Function) => this;
     public on: (event: string, listener: Function) => this;
     public once: (event: string, listener: Function) => this;
+    public prependListener: (event: string, listener: Function) => this;
+    public prependOnceListener: (event: string, listener: Function) => this;
     public removeListener: (event: string, listener: Function) => this;
     public removeAllListeners: (event?: string) => this;
     public getMaxListeners: () => number;
     public setMaxListeners: (n: number) => this;
     public listeners: (event: string) => Function[];
     public emit: (event: string, ...args: any[]) => boolean;
+    public eventNames: () => string[];
     public listenerCount: (type: string) => number;
 
     // Simple helper log function that adds a timestamp and supports filtering 'debug' only messages
@@ -719,5 +728,3 @@ interface ServerConfig {
     video_servers: string[];
     websocket_servers: { [index: string]: string };
 }
-
-exports.Client = Client;

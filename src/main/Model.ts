@@ -1,5 +1,9 @@
-/* @internal */
-var EventEmitter: any = require("events").EventEmitter;
+import {applyMixins} from "./Utils";
+import {EventEmitter} from "events";
+import {FCTYPE, STATE} from "./Constants";
+import {FCVIDEO, FCOPT} from "./Constants";
+import {Packet} from "./Packet";
+import * as assert from "assert";
 
 // Model represents a single MFC model, or technically any MFC user whether or
 // not that user is a model, admin, guest, basic, premium user, etc.
@@ -9,7 +13,7 @@ var EventEmitter: any = require("events").EventEmitter;
 //
 // Finally, Model emits events when the Model's state is changed.  This is best
 // explained via examples.  So see the readme.md
-class Model implements NodeJS.EventEmitter {
+export class Model implements EventEmitter {
     public uid: number;    // This Model's user id
     public nm: string;     // The Model's name
     public tags: string[] = []; // Tags are not session specific
@@ -39,28 +43,34 @@ class Model implements NodeJS.EventEmitter {
     public addListener: (event: string, listener: Function) => this;
     public on: (event: string, listener: Function) => this;
     public once: (event: string, listener: Function) => this;
+    public prependListener: (event: string, listener: Function) => this;
+    public prependOnceListener: (event: string, listener: Function) => this;
     public removeListener: (event: string, listener: Function) => this;
     public removeAllListeners: (event?: string) => this;
     public getMaxListeners: () => number;
     public setMaxListeners: (n: number) => this;
     public listeners: (event: string) => Function[];
     public emit: (event: string, ...args: any[]) => boolean;
+    public eventNames: () => string[];
     public listenerCount: (type: string) => number;
 
     // EventEmitter object to be used for events firing for all models
-    private static eventsForAllModels: NodeJS.EventEmitter = new EventEmitter();
+    private static eventsForAllModels: EventEmitter = new EventEmitter();
 
     // Expose the "all model" events as constructor properies to be accessed
     // like Model.on(...)
     public static addListener = Model.eventsForAllModels.addListener;
     public static on = Model.eventsForAllModels.on;
     public static once = Model.eventsForAllModels.once;
+    public static prependListener = Model.eventsForAllModels.prependListener;
+    public static prependOnceListener = Model.eventsForAllModels.prependOnceListener;
     public static removeListener = Model.eventsForAllModels.removeListener;
     public static removeAllListeners = Model.eventsForAllModels.removeAllListeners;
     public static getMaxListeners = Model.eventsForAllModels.getMaxListeners;
     public static setMaxListeners = Model.eventsForAllModels.setMaxListeners;
     public static listeners = Model.eventsForAllModels.listeners;
     public static emit = Model.eventsForAllModels.emit;
+    public static eventNames = Model.eventsForAllModels.eventNames;
     public static listenerCount = Model.eventsForAllModels.listenerCount;
 
     // A registry of all known models that is built up as we receive
@@ -350,15 +360,15 @@ class Model implements NodeJS.EventEmitter {
     }
 }
 
-type whenFilter = (m: Model) => boolean;
-type whenCallback = (m: Model, p: Packet) => void;
+export type whenFilter = (m: Model) => boolean;
+export type whenCallback = (m: Model, p: Packet) => void;
 interface whenMapEntry {
     onTrue: whenCallback;
     onFalseAfterTrue: whenCallback;
     matchedSet: Set<number>;
 }
 interface mergeCallbackPayload { prop: string; oldstate: number | string | string[] | boolean; newstate: number | string | string[] | boolean; };
-interface ModelSessionDetails extends BaseMessage, ModelDetailsMessage, UserDetailsMessage, SessionDetailsMessage {
+export interface ModelSessionDetails extends BaseMessage, ModelDetailsMessage, UserDetailsMessage, SessionDetailsMessage {
     model_sw?: number;
     truepvt?: number;
     guests_muted?: number;
@@ -367,5 +377,3 @@ interface ModelSessionDetails extends BaseMessage, ModelDetailsMessage, UserDeta
 }
 
 applyMixins(Model, [EventEmitter]);
-
-exports.Model = Model;

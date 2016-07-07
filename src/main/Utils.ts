@@ -1,5 +1,7 @@
+import * as assert from "assert";
+
 // Helper logging function that timestamps each message and optionally outputs to a file as well
-function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) => string): void {
+export function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) => string): void {
     "use strict";
     assert.notStrictEqual(msg, undefined, "Trying to print undefined.  This usually indicates a bug upstream from the log function.");
 
@@ -35,7 +37,7 @@ function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) =>
 
 // Think of this as util.inherits, except that it doesn't completely overwrite
 // the prototype of the base object.  It just adds to it.
-function applyMixins(derivedCtor: any, baseCtors: any[]) {
+export function applyMixins(derivedCtor: any, baseCtors: any[]) {
     "use strict";
     baseCtors.forEach(baseCtor => {
         Object.getOwnPropertyNames(baseCtor.prototype).forEach(name => {
@@ -43,6 +45,3 @@ function applyMixins(derivedCtor: any, baseCtors: any[]) {
         });
     });
 }
-
-exports.log = log;
-exports.applyMixins = applyMixins;
