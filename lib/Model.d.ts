@@ -1,4 +1,5 @@
 import { EventEmitter } from "events";
+import { BaseMessage, ModelDetailsMessage, UserDetailsMessage, SessionDetailsMessage } from "./sMessages";
 import { Packet } from "./Packet";
 export declare class Model implements EventEmitter {
     uid: number;

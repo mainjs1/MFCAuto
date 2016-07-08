@@ -1,3 +1,4 @@
+import {AnyMessage, RoomDataMessage, Message, FCTokenIncResponse} from "./sMessages";
 import {Client} from "./Client";
 import {FCTYPE} from "./Constants";
 import {log} from "./Utils";

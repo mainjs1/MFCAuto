@@ -8,16 +8,16 @@
 // understanding of the MFC communication protocol.
 
 // The AnyMessage union describes all possible sMessage types
-type AnyMessage = FCTypeLoginResponse|FCTypeSlaveVShareResponse|FCTypeTagsResponse|FCTokenIncResponse|RoomDataMessage|Message;
+export type AnyMessage = FCTypeLoginResponse|FCTypeSlaveVShareResponse|FCTypeTagsResponse|FCTokenIncResponse|RoomDataMessage|Message;
 
-type FCTypeLoginResponse = string; // After successfully logging in, a FCTYPE.LOGIN response is sent whose sMessage is your chat name as a plain string
-type FCTypeSlaveVShareResponse = number[]; // FCTYPE.SLAVEVSHARE messages contain this payload which I don't understand
-interface FCTypeTagsResponse { // FCTYPE.TAGS messages
+export type FCTypeLoginResponse = string; // After successfully logging in, a FCTYPE.LOGIN response is sent whose sMessage is your chat name as a plain string
+export type FCTypeSlaveVShareResponse = number[]; // FCTYPE.SLAVEVSHARE messages contain this payload which I don't understand
+export interface FCTypeTagsResponse { // FCTYPE.TAGS messages
     // A numbered property like "18137786": string[];
     // Where the numbered property is a model ID and the array of strings are the models tags
     [index: number]: string[];
 }
-interface FCTokenIncResponse { // FCTYPE.TOKENINC messages are received when someone tips publically in a room you're in
+export interface FCTokenIncResponse { // FCTYPE.TOKENINC messages are received when someone tips publically in a room you're in
     ch: number;
     flags: number;
     m: [number, number, string]; // Format is [sender's id, receiver's id, receiver's name]
@@ -27,7 +27,7 @@ interface FCTokenIncResponse { // FCTYPE.TOKENINC messages are received when som
     u: [number, number, string]; // Format is [###, ###, sender's name (or 'anonymous' for anon tips)]
 }
 
-interface RoomDataMessage {
+export interface RoomDataMessage {
     countdown: boolean;
     model: number;
     sofar: number;
@@ -36,7 +36,7 @@ interface RoomDataMessage {
     total: number;
 }
 
-interface BaseMessage {
+export interface BaseMessage {
     sid: number;    // Session ID
     uid: number;    // User ID
     lv?: number;    // User level, 0 == guest, 4 == model // @TODO, fill in the rest here.  There's premium/basic/admin/etc....
@@ -47,7 +47,7 @@ interface BaseMessage {
 
 
 // Most other sMessage types will look like this (including DETAILS, SESSIONSTATE, PMESG, CMESG)
-interface Message extends BaseMessage {
+export interface Message extends BaseMessage {
     u?: UserDetailsMessage;
     m?: ModelDetailsMessage;
     s?: SessionDetailsMessage;
@@ -55,7 +55,7 @@ interface Message extends BaseMessage {
 
 // Model specific user details.  The object can have as few as one property,
 // usually 'rc' in that case, or many. No single property is always present.
-interface ModelDetailsMessage {
+export interface ModelDetailsMessage {
     camscore?: number;  // The model's current camscore as a floating point value
     continent?: string; // Two letter continent abbreviate "EU", "SA", "NA" etc for the model.  This seems based on geo-location information about the model's IP.  It is not tied to what the model claims is her country in her bio details.
     flags?: number;     // Bit mask of various model settings.  Need to document better @TODO
@@ -72,7 +72,7 @@ interface ModelDetailsMessage {
 
 // General user details. This contains user details common for all users (models
 // and members).
-interface UserDetailsMessage {
+export interface UserDetailsMessage {
     age?: number;           // User's age based on user provided details (so this is very often a lie)
     avatar?: number;        // Unknown @TODO, it is usually a small integer value in the 1 to 3 range
     blurb?: string;         // User's bio blurb which shows at the top of their profile and directly under their name in the user menu
@@ -93,7 +93,7 @@ interface UserDetailsMessage {
 // Suspect but have not confirmed that this portion would light up with actual
 // useful tokens remaining, 'tk', and reward point, 'rp', values if you're logged
 // in as a premium user
-interface SessionDetailsMessage {
+export interface SessionDetailsMessage {
     ga2?: string;    // As a guest, this is always the empty string ""
     gst?: string;    // As a guest, this is always the empty string ""
     ip?: string;     // As a guest, this is always the string "0.0.0.0"

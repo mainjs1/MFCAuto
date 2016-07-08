@@ -2,6 +2,7 @@ import {applyMixins} from "./Utils";
 import {EventEmitter} from "events";
 import {FCTYPE, STATE} from "./Constants";
 import {FCVIDEO, FCOPT} from "./Constants";
+import {Message, BaseMessage, ModelDetailsMessage, UserDetailsMessage, SessionDetailsMessage, FCTypeTagsResponse} from "./sMessages";
 import {Packet} from "./Packet";
 import * as assert from "assert";
 

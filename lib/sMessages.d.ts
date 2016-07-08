@@ -1,10 +1,10 @@
-declare type AnyMessage = FCTypeLoginResponse | FCTypeSlaveVShareResponse | FCTypeTagsResponse | FCTokenIncResponse | RoomDataMessage | Message;
-declare type FCTypeLoginResponse = string;
-declare type FCTypeSlaveVShareResponse = number[];
-interface FCTypeTagsResponse {
+export declare type AnyMessage = FCTypeLoginResponse | FCTypeSlaveVShareResponse | FCTypeTagsResponse | FCTokenIncResponse | RoomDataMessage | Message;
+export declare type FCTypeLoginResponse = string;
+export declare type FCTypeSlaveVShareResponse = number[];
+export interface FCTypeTagsResponse {
     [index: number]: string[];
 }
-interface FCTokenIncResponse {
+export interface FCTokenIncResponse {
     ch: number;
     flags: number;
     m: [number, number, string];
@@ -13,7 +13,7 @@ interface FCTokenIncResponse {
     tokens: number;
     u: [number, number, string];
 }
-interface RoomDataMessage {
+export interface RoomDataMessage {
     countdown: boolean;
     model: number;
     sofar: number;
@@ -21,7 +21,7 @@ interface RoomDataMessage {
     topic: string;
     total: number;
 }
-interface BaseMessage {
+export interface BaseMessage {
     sid: number;
     uid: number;
     lv?: number;
@@ -29,12 +29,12 @@ interface BaseMessage {
     vs?: number;
     msg?: string;
 }
-interface Message extends BaseMessage {
+export interface Message extends BaseMessage {
     u?: UserDetailsMessage;
     m?: ModelDetailsMessage;
     s?: SessionDetailsMessage;
 }
-interface ModelDetailsMessage {
+export interface ModelDetailsMessage {
     camscore?: number;
     continent?: string;
     flags?: number;
@@ -48,7 +48,7 @@ interface ModelDetailsMessage {
     topic?: string;
     hidecs?: boolean;
 }
-interface UserDetailsMessage {
+export interface UserDetailsMessage {
     age?: number;
     avatar?: number;
     blurb?: string;
@@ -65,7 +65,7 @@ interface UserDetailsMessage {
     photos?: number;
     profile?: number;
 }
-interface SessionDetailsMessage {
+export interface SessionDetailsMessage {
     ga2?: string;
     gst?: string;
     ip?: string;

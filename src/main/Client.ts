@@ -1,3 +1,4 @@
+import {AnyMessage, Message} from "./sMessages";
 import {EventEmitter} from "events";
 import {log, applyMixins} from "./Utils";
 import {MAGIC, FCTYPE, FCCHAN} from "./Constants";

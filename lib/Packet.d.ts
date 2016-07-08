@@ -1,3 +1,4 @@
+import { AnyMessage } from "./sMessages";
 import { FCTYPE } from "./Constants";
 import { Model } from "./Model";
 export declare class Packet {
