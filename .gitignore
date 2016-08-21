@@ -4,3 +4,4 @@ src/test/packetLog.txt
 packetLog.txt
 src/test/cred.txt
 *.map
+*~

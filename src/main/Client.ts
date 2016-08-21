@@ -381,7 +381,7 @@ export class Client implements EventEmitter {
                     content = content.substr(startIndex, endIndex - startIndex);
 
                     // Then massage the function somewhat and prepend some prerequisites
-                    content = "var document = {cookie: ''};var XMLHttpRequest = require('XMLHttpRequest').XMLHttpRequest;function bind(that,f){return f.bind(that);}" + content.replace(/createRequestObject\(\)/g, "new XMLHttpRequest()").replace(/new MfcImageHost\(\)/g, "{host: function(){return '';}}").replace(/this\.Reset\(\);/g, "this.Reset();this.oReq = new XMLHttpRequest();");
+                    content = "var document = {cookie: ''};var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;function bind(that,f){return f.bind(that);}" + content.replace(/createRequestObject\(\)/g, "new XMLHttpRequest()").replace(/new MfcImageHost\(\)/g, "{host: function(){return '';}}").replace(/this\.Reset\(\);/g, "this.Reset();this.oReq = new XMLHttpRequest();");
                     return content;
                 }).then((obj) => {
                     this.emoteParser = new obj.ParseEmoteInput();
