@@ -58,16 +58,16 @@ export class Client implements EventEmitter {
     }
 
     // Instance EventEmitter methods
-    public addListener: (event: string, listener: Function) => this;
-    public on: (event: string, listener: Function) => this;
-    public once: (event: string, listener: Function) => this;
-    public prependListener: (event: string, listener: Function) => this;
-    public prependOnceListener: (event: string, listener: Function) => this;
-    public removeListener: (event: string, listener: Function) => this;
+    public addListener: (event: string, listener: ClientEventCallback) => this;
+    public on: (event: string, listener: ClientEventCallback) => this;
+    public once: (event: string, listener: ClientEventCallback) => this;
+    public prependListener: (event: string, listener: ClientEventCallback) => this;
+    public prependOnceListener: (event: string, listener: ClientEventCallback) => this;
+    public removeListener: (event: string, listener: ClientEventCallback) => this;
     public removeAllListeners: (event?: string) => this;
     public getMaxListeners: () => number;
     public setMaxListeners: (n: number) => this;
-    public listeners: (event: string) => Function[];
+    public listeners: (event: string) => ClientEventCallback[];
     public emit: (event: string, ...args: any[]) => boolean;
     public eventNames: () => string[];
     public listenerCount: (type: string) => number;
@@ -129,6 +129,7 @@ export class Client implements EventEmitter {
             case FCTYPE.USERNAMELOOKUP:
             case FCTYPE.MYCAMSTATE:
             case FCTYPE.MYWEBCAM:
+            case FCTYPE.JOINCHAN:
                 // According to the site code, these packets can all trigger a user state update
 
                 // Except in these specific cases...
@@ -709,6 +710,7 @@ export class Client implements EventEmitter {
     public disconnect(): void {
         if (this.client !== undefined) {
             this.manualDisconnect = true;
+            clearInterval(this.keepAlive);
             this.client.end();
             this.client = undefined;
         }
@@ -716,6 +718,7 @@ export class Client implements EventEmitter {
 }
 applyMixins(Client, [EventEmitter]);
 
+export type ClientEventCallback = (packet?: Packet) => void;
 type EmoteParserCallback = (parsedString: string, aMsg2: { txt: string; url: string; code: string }[]) => void;
 interface EmoteParser {
     Process(msg: string, callback: EmoteParserCallback): void;

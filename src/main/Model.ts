@@ -41,16 +41,16 @@ export class Model implements EventEmitter {
     // like:  var m = new Model();  m.on(...);
     // Note that these are not implemented here, we will mixin the correct
     // implementation after this class declaration.
-    public addListener: (event: string, listener: Function) => this;
-    public on: (event: string, listener: Function) => this;
-    public once: (event: string, listener: Function) => this;
-    public prependListener: (event: string, listener: Function) => this;
-    public prependOnceListener: (event: string, listener: Function) => this;
-    public removeListener: (event: string, listener: Function) => this;
+    public addListener: (event: string, listener: ModelEventCallback) => this;
+    public on: (event: string, listener: ModelEventCallback) => this;
+    public once: (event: string, listener: ModelEventCallback) => this;
+    public prependListener: (event: string, listener: ModelEventCallback) => this;
+    public prependOnceListener: (event: string, listener: ModelEventCallback) => this;
+    public removeListener: (event: string, listener: ModelEventCallback) => this;
     public removeAllListeners: (event?: string) => this;
     public getMaxListeners: () => number;
     public setMaxListeners: (n: number) => this;
-    public listeners: (event: string) => Function[];
+    public listeners: (event: string) => ModelEventCallback[];
     public emit: (event: string, ...args: any[]) => boolean;
     public eventNames: () => string[];
     public listenerCount: (type: string) => number;
@@ -60,16 +60,16 @@ export class Model implements EventEmitter {
 
     // Expose the "all model" events as constructor properies to be accessed
     // like Model.on(...)
-    public static addListener = Model.eventsForAllModels.addListener;
-    public static on = Model.eventsForAllModels.on;
-    public static once = Model.eventsForAllModels.once;
-    public static prependListener = Model.eventsForAllModels.prependListener;
-    public static prependOnceListener = Model.eventsForAllModels.prependOnceListener;
-    public static removeListener = Model.eventsForAllModels.removeListener;
+    public static addListener = Model.eventsForAllModels.addListener as (event: string, listener: ModelEventCallback) => void;
+    public static on = Model.eventsForAllModels.on as (event: string, listener: ModelEventCallback) => void;
+    public static once = Model.eventsForAllModels.once as (event: string, listener: ModelEventCallback) => void;
+    public static prependListener = Model.eventsForAllModels.prependListener as (event: string, listener: ModelEventCallback) => void;
+    public static prependOnceListener = Model.eventsForAllModels.prependOnceListener as (event: string, listener: ModelEventCallback) => void;
+    public static removeListener = Model.eventsForAllModels.removeListener as (event: string, listener: ModelEventCallback) => void;
     public static removeAllListeners = Model.eventsForAllModels.removeAllListeners;
     public static getMaxListeners = Model.eventsForAllModels.getMaxListeners;
     public static setMaxListeners = Model.eventsForAllModels.setMaxListeners;
-    public static listeners = Model.eventsForAllModels.listeners;
+    public static listeners = Model.eventsForAllModels.listeners as (event: string) => ModelEventCallback[];
     public static emit = Model.eventsForAllModels.emit;
     public static eventNames = Model.eventsForAllModels.eventNames;
     public static listenerCount = Model.eventsForAllModels.listenerCount;
@@ -361,6 +361,7 @@ export class Model implements EventEmitter {
     }
 }
 
+export type ModelEventCallback = (model: Model, before: number | string | string[] | boolean, after: number | string | string[] | boolean) => void;
 export type whenFilter = (m: Model) => boolean;
 export type whenCallback = (m: Model, p: Packet) => void;
 interface whenMapEntry {

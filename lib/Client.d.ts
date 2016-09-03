@@ -23,16 +23,16 @@ export declare class Client implements EventEmitter {
     private static maximumReconnectSeconds;
     private static currentReconnectSeconds;
     constructor(username?: string, password?: string);
-    addListener: (event: string, listener: Function) => this;
-    on: (event: string, listener: Function) => this;
-    once: (event: string, listener: Function) => this;
-    prependListener: (event: string, listener: Function) => this;
-    prependOnceListener: (event: string, listener: Function) => this;
-    removeListener: (event: string, listener: Function) => this;
+    addListener: (event: string, listener: ClientEventCallback) => this;
+    on: (event: string, listener: ClientEventCallback) => this;
+    once: (event: string, listener: ClientEventCallback) => this;
+    prependListener: (event: string, listener: ClientEventCallback) => this;
+    prependOnceListener: (event: string, listener: ClientEventCallback) => this;
+    removeListener: (event: string, listener: ClientEventCallback) => this;
     removeAllListeners: (event?: string) => this;
     getMaxListeners: () => number;
     setMaxListeners: (n: number) => this;
-    listeners: (event: string) => Function[];
+    listeners: (event: string) => ClientEventCallback[];
     emit: (event: string, ...args: any[]) => boolean;
     eventNames: () => string[];
     listenerCount: (type: string) => number;
@@ -60,3 +60,4 @@ export declare class Client implements EventEmitter {
     connectAndWaitForModels(): Promise<{}>;
     disconnect(): void;
 }
+export declare type ClientEventCallback = (packet?: Packet) => void;
