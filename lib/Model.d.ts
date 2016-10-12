@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { EventEmitter } from "events";
 import { BaseMessage, ModelDetailsMessage, UserDetailsMessage, SessionDetailsMessage } from "./sMessages";
 import { Packet } from "./Packet";
@@ -20,25 +21,25 @@ export declare class Model implements EventEmitter {
     eventNames: () => string[];
     listenerCount: (type: string) => number;
     private static eventsForAllModels;
-    static addListener: (event: string, listener: (model: Model, before: number | string | string[] | boolean, after: number | string | string[] | boolean) => void) => void;
-    static on: (event: string, listener: (model: Model, before: number | string | string[] | boolean, after: number | string | string[] | boolean) => void) => void;
-    static once: (event: string, listener: (model: Model, before: number | string | string[] | boolean, after: number | string | string[] | boolean) => void) => void;
-    static prependListener: (event: string, listener: (model: Model, before: number | string | string[] | boolean, after: number | string | string[] | boolean) => void) => void;
-    static prependOnceListener: (event: string, listener: (model: Model, before: number | string | string[] | boolean, after: number | string | string[] | boolean) => void) => void;
-    static removeListener: (event: string, listener: (model: Model, before: number | string | string[] | boolean, after: number | string | string[] | boolean) => void) => void;
-    static removeAllListeners: (event?: string) => EventEmitter;
+    static addListener: (event: string, listener: ModelEventCallback) => void;
+    static on: (event: string, listener: ModelEventCallback) => void;
+    static once: (event: string, listener: ModelEventCallback) => void;
+    static prependListener: (event: string, listener: ModelEventCallback) => void;
+    static prependOnceListener: (event: string, listener: ModelEventCallback) => void;
+    static removeListener: (event: string, listener: ModelEventCallback) => void;
+    static removeAllListeners: (event?: string | symbol | undefined) => EventEmitter;
     static getMaxListeners: () => number;
     static setMaxListeners: (n: number) => EventEmitter;
-    static listeners: (event: string) => ((model: Model, before: number | string | string[] | boolean, after: number | string | string[] | boolean) => void)[];
-    static emit: (event: string, ...args: any[]) => boolean;
-    static eventNames: () => string[];
-    static listenerCount: (type: string) => number;
+    static listeners: (event: string) => ModelEventCallback[];
+    static emit: (event: string | symbol, ...args: any[]) => boolean;
+    static eventNames: () => (string | symbol)[];
+    static listenerCount: (type: string | symbol) => number;
     private static knownModels;
     constructor(uid: number, packet?: Packet);
-    static getModel(id: any, createIfNecessary?: boolean): Model;
+    static getModel(id: any, createIfNecessary?: boolean): Model | undefined;
     static findModels(filter: (model: Model) => boolean): Model[];
-    bestSessionId: number;
-    bestSession: ModelSessionDetails;
+    readonly bestSessionId: number;
+    readonly bestSession: ModelSessionDetails;
     mergePacket(packet: Packet): void;
     private purgeOldSessions();
     reset(): void;
@@ -49,16 +50,16 @@ export declare class Model implements EventEmitter {
     private whenMap;
     when(condition: whenFilter, onTrue: whenCallback, onFalseAfterTrue?: whenCallback): void;
     removeWhen(condition: (m: Model) => boolean): boolean;
-    private processWhens(packet);
+    private processWhens(packet?);
     toString(): string;
 }
 export declare type ModelEventCallback = (model: Model, before: number | string | string[] | boolean, after: number | string | string[] | boolean) => void;
 export declare type whenFilter = (m: Model) => boolean;
-export declare type whenCallback = (m: Model, p: Packet) => void;
+export declare type whenCallback = (m: Model, p?: Packet) => void;
 export interface ModelSessionDetails extends BaseMessage, ModelDetailsMessage, UserDetailsMessage, SessionDetailsMessage {
     model_sw?: number;
     truepvt?: number;
     guests_muted?: number;
     basics_muted?: number;
-    [index: string]: number | string | boolean;
+    [index: string]: number | string | boolean | undefined;
 }

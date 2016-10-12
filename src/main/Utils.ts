@@ -20,6 +20,7 @@ export function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: str
 
     // Explicitly passing null, not undefined, as the consoleFormatter
     // means to skip the console output completely
+    // tslint:disable:no-null-keyword
     if (consoleFormatter !== null) {
         if (consoleFormatter) {
             console.log(consoleFormatter(taggedMsg));

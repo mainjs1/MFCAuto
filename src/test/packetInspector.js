@@ -7,7 +7,7 @@ Used for dumping raw packets to the console to learn about the MFC protocol and 
 "use strict";
 
 let fs = require("fs");
-let mfc = require('../../lib/index.js');
+let mfc = require("../../lib/index.js");
 let log = mfc.log;
 let user = "guest";
 let pass = "guest";

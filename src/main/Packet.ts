@@ -10,20 +10,20 @@ declare var unescape: (text: string) => string;
 
 // Packet represents a single, complete message received from the chat server
 export class Packet {
-    public FCType: FCTYPE;     // The message type
-    public nFrom: number;      // Who sent the message (unclear what this actually represents, but it looks like a session id)
-    public nTo: number;        // Who the message is for (almost always your own session id)
-    public nArg1: number;      // Variable argument 1 (unclear usage in practice)
-    public nArg2: number;      // Variable argument 2 (if the packet is about a model, updating her state or room title for instance, this value will be the model's user id)
-    public sPayload: number;   // Payload size
-    public sMessage: AnyMessage;      // The actual payload
+    public readonly FCType: FCTYPE;     // The message type
+    public readonly nFrom: number;      // Who sent the message (unclear what this actually represents, but it looks like a session id)
+    public readonly nTo: number;        // Who the message is for (almost always your own session id)
+    public readonly nArg1: number;      // Variable argument 1 (unclear usage in practice)
+    public readonly nArg2: number;      // Variable argument 2 (if the packet is about a model, updating her state or room title for instance, this value will be the model's user id)
+    public readonly sPayload: number;   // Payload size
+    public readonly sMessage: AnyMessage | undefined;      // The actual payload
 
     // Property backing fields
-    private _aboutModel: Model;
-    private _pMessage: string;
+    private _aboutModel: Model | undefined;
+    private _pMessage: string | undefined;
     private _chatString: string;
 
-    constructor(FCType: FCTYPE, nFrom: number, nTo: number, nArg1: number, nArg2: number, sPayload: number, sMessage: AnyMessage) {
+    constructor(FCType: FCTYPE, nFrom: number, nTo: number, nArg1: number, nArg2: number, sPayload: number, sMessage: AnyMessage | undefined) {
         this.FCType = FCType;
         this.nFrom = nFrom;
         this.nTo = nTo;
@@ -35,7 +35,7 @@ export class Packet {
 
     // Try to determine which model this packet is loosely "about"
     // meaning whose receiving the tip/chat/status update/etc
-    get aboutModel(): Model {
+    get aboutModel(): Model | undefined {
         if (this._aboutModel === undefined) {
             let id = -1;
             switch (this.FCType) {
@@ -100,7 +100,7 @@ export class Packet {
     // called directly, but rather for the decoded string to be accessed through
     // the pMessage property, which has the beneficial side-effect of caching the
     // result for faster repeated access.
-    private _parseEmotes(msg: string): string {
+    private _parseEmotes(msg: string): string | undefined {
         try {
             msg = unescape(msg);
 
@@ -111,6 +111,7 @@ export class Packet {
             let oImgRegExPattern = /#~(e|c|u|ue),(\w+)(\.?)(jpeg|jpg|gif|png)?,([\w\-\:\);\(\]\=\$\?\*]{0,48}),?(\d*),?(\d*)~#/;
 
             let re: any = [];
+            // tslint:disable:no-conditional-assignment
             while ((re = msg.match(oImgRegExPattern)) && nParseLimit < 10) {
                 let sShortcut = re[5] || "";
 
@@ -138,7 +139,7 @@ export class Packet {
     //   "I am happy #~ue,2c9d2da6.gif,mhappy~#"
     // This returns that in the more human readable format:
     //   "I am happy :mhappy"
-    public get pMessage(): string {
+    public get pMessage(): string | undefined {
         // Formats the parsed message component of this packet, if one exists, with decoded emotes
         if (this._pMessage === undefined && typeof this.sMessage === "object") {
             if (this.FCType === FCTYPE.CMESG || this.FCType === FCTYPE.PMESG || this.FCType === FCTYPE.TOKENINC) {

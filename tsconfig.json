@@ -8,8 +8,9 @@
         "sourceMap": true,
         "noLib": false,
         "moduleResolution": "node",
-        "stripInternal": true,
-        "removeComments": true
+        "removeComments": true,
+        "strictNullChecks": true,
+        "stripInternal": true
     },
     "exclude": [
         "node_modules",

@@ -90,7 +90,7 @@ export class Model implements EventEmitter {
 
     // Retrieves a specific model instance by user id from knownModels, creating
     // the model instance if it does not already exist.
-    public static getModel(id: any, createIfNecessary: boolean = true): Model {
+    public static getModel(id: any, createIfNecessary: boolean = true): Model | undefined {
         if (typeof id === "string") { id = parseInt(id); }
         if (Model.knownModels.has(id)) {
             return Model.knownModels.get(id);
@@ -197,7 +197,7 @@ export class Model implements EventEmitter {
                 let payload: any = packet.sMessage;
                 assert.notStrictEqual(payload, undefined);
                 assert.ok(payload.lv === undefined || payload.lv === 4, "Merging a non-model? Non-models need some special casing that is not currently implemented.");
-                assert.ok((payload.uid !== undefined && this.uid === payload.uid) || packet.aboutModel.uid === this.uid, "Merging a packet meant for a different model!: " + packet.toString());
+                assert.ok((payload.uid !== undefined && this.uid === payload.uid) || (packet.aboutModel && packet.aboutModel.uid === this.uid), "Merging a packet meant for a different model!: " + packet.toString());
 
                 for (let key in payload) {
                     // Rip out the sMessage.u|m|s properties and put them on the session at
@@ -330,13 +330,13 @@ export class Model implements EventEmitter {
     // previously but is no longer true
     public when(condition: whenFilter, onTrue: whenCallback, onFalseAfterTrue?: whenCallback): void {
         this.whenMap.set(condition, { onTrue: onTrue, onFalseAfterTrue: onFalseAfterTrue, matchedSet: new Set() as Set<number> });
-        this.processWhens(undefined);
+        this.processWhens();
     }
     public removeWhen(condition: (m: Model) => boolean): boolean {
         return this.whenMap.delete(condition);
     }
 
-    private processWhens(packet: Packet): void {
+    private processWhens(packet?: Packet): void {
         let processor = (actions: whenMapEntry, condition: whenFilter) => {
             if (condition(this)) {
                 // Only if we weren't previously matching this condition
@@ -363,19 +363,19 @@ export class Model implements EventEmitter {
 
 export type ModelEventCallback = (model: Model, before: number | string | string[] | boolean, after: number | string | string[] | boolean) => void;
 export type whenFilter = (m: Model) => boolean;
-export type whenCallback = (m: Model, p: Packet) => void;
+export type whenCallback = (m: Model, p?: Packet) => void;
 interface whenMapEntry {
     onTrue: whenCallback;
-    onFalseAfterTrue: whenCallback;
+    onFalseAfterTrue?: whenCallback;
     matchedSet: Set<number>;
 }
-interface mergeCallbackPayload { prop: string; oldstate: number | string | string[] | boolean; newstate: number | string | string[] | boolean; };
+interface mergeCallbackPayload { prop: string; oldstate: number | string | string[] | boolean | undefined; newstate: number | string | string[] | boolean | undefined; };
 export interface ModelSessionDetails extends BaseMessage, ModelDetailsMessage, UserDetailsMessage, SessionDetailsMessage {
     model_sw?: number;
     truepvt?: number;
     guests_muted?: number;
     basics_muted?: number;
-    [index: string]: number | string | boolean;
+    [index: string]: number | string | boolean | undefined;
 }
 
 applyMixins(Model, [EventEmitter]);

@@ -143,7 +143,7 @@ export class Client implements EventEmitter {
                 if (packet.sMessage !== undefined) {
                     let lv = (packet.sMessage as Message).lv;
                     let uid = (packet.sMessage as Message).uid;
-                    if (uid === undefined) {
+                    if (uid === undefined && packet.aboutModel) {
                         uid = packet.aboutModel.uid;
                     }
 
@@ -165,7 +165,10 @@ export class Client implements EventEmitter {
                 let tagPayload: any = packet.sMessage;
                 for (let key in tagPayload) {
                     if (tagPayload.hasOwnProperty(key)) {
-                        Model.getModel(key).mergePacket(packet);
+                        let possibleModel = Model.getModel(key);
+                        if (possibleModel !== undefined) {
+                            possibleModel.mergePacket(packet);
+                        }
                     }
                 }
                 break;
@@ -203,7 +206,7 @@ export class Client implements EventEmitter {
     private _readPacket(): void {
         let pos: number = this.streamBufferPosition;
         let intParams: number[] = [];
-        let strParam: string;
+        let strParam: string | undefined;
 
         try {
             // Each incoming packet is initially tagged with 7 int32 values, they look like this:
@@ -247,7 +250,7 @@ export class Client implements EventEmitter {
             // At this point we have the full packet in the intParams and strParam values, but intParams is an unstructured array
             // Let's clean it up before we delegate to this.packetReceived.  (Leaving off the magic int, because it MUST be there always
             // and doesn't add anything to the understanding)
-            let strParam2: AnyMessage;
+            let strParam2: AnyMessage | undefined;
             if (strParam) {
                 try {
                     strParam2 = JSON.parse(strParam);

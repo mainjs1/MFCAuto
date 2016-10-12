@@ -1,3 +1,5 @@
+/// <reference types="node" />
+/// <reference types="es6-shim" />
 import { EventEmitter } from "events";
 import { FCTYPE } from "./Constants";
 import { Packet } from "./Packet";
