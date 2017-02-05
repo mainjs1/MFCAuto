@@ -379,13 +379,13 @@ export class Client implements EventEmitter {
                     // so is this entire module.
 
                     // First, pull out only the ParseEmoteInput function
-                    let startIndex = content.indexOf("function ParseEmoteInput()");
-                    let endIndex = content.indexOf("function ParseEmoteOutput()");
+                    let startIndex = content.indexOf("// js_build_core: MfcJs/ParseEmoteInput/ParseEmoteInput.js");
+                    let endIndex = content.indexOf("// js_build_core: ", startIndex + 1);
                     assert.ok(startIndex !== -1 && endIndex !== -1 && startIndex < endIndex, "mfccore.js layout has changed, don't know what to do now");
                     content = content.substr(startIndex, endIndex - startIndex);
 
                     // Then massage the function somewhat and prepend some prerequisites
-                    content = "var document = {cookie: ''};var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;function bind(that,f){return f.bind(that);}" + content.replace(/createRequestObject\(\)/g, "new XMLHttpRequest()").replace(/new MfcImageHost\(\)/g, "{host: function(){return '';}}").replace(/this\.Reset\(\);/g, "this.Reset();this.oReq = new XMLHttpRequest();");
+                    content = "var document = {cookie: ''};var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;function bind(that,f){return f.bind(that);}" + content.replace(/this.createRequestObject\(\)/g, "new XMLHttpRequest()").replace(/new MfcImageHost\(\)/g, "{host: function(){return '';}}").replace(/this\.Reset\(\);/g, "this.Reset();this.oReq = new XMLHttpRequest();");
                     return content;
                 }).then((obj) => {
                     this.emoteParser = new obj.ParseEmoteInput();
