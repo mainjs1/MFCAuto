@@ -245,7 +245,7 @@ Most of these properties are optional, and might be undefined for any given mode
 |lastnews| |The timestamp of the model's last newsfeed entry|number
 |missmfc| |A number indicating whether a model has been in the top 3 of Miss MFC before or not|number
 |new_model| |1 if this model is considered "new" and 0 if she isn't|number
-|rank| |The model's current Miss MFC rank for this month, or 0 if the model is ranked above 250|number
+|rank| |The model's current Miss MFC rank for this month, or 0 if the model is ranked greater than 1000|number
 |rc|room count|The number of people in the model's room|number
 |topic| |The model's current room topic|string
 |age| |Model's age, if she specified one|number
