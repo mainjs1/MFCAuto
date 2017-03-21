@@ -1,7 +1,7 @@
 import {AnyMessage, RoomDataMessage, Message, FCTokenIncResponse} from "./sMessages";
 import {Client} from "./Client";
 import {FCTYPE} from "./Constants";
-import {log} from "./Utils";
+import {logWithLevel, LogLevel} from "./Utils";
 import {Model} from "./Model";
 
 // Forward definitions for the TypeScript compiler
@@ -44,7 +44,7 @@ export class Packet {
                 case FCTYPE.JOINCHAN:
                 case FCTYPE.STATUS:
                 case FCTYPE.CHATFLASH:
-                case FCTYPE.BROADCASTPROFILE:
+                case FCTYPE.ZBAN:
                     id = this.nArg1;
                     break;
                 case FCTYPE.SESSIONSTATE:
@@ -129,7 +129,7 @@ export class Packet {
             return msg;
         } catch (e) {
             // In practice I've never seen this happen, but if it does, it's not serious enough to tear down the whole client...
-            log("Error parsing emotes from '" + msg + "': " + e);
+            logWithLevel(LogLevel.WARNING, "Error parsing emotes from '" + msg + "': " + e);
             return undefined;
         }
     }

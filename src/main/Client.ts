@@ -1,6 +1,6 @@
 import {AnyMessage, Message} from "./sMessages";
 import {EventEmitter} from "events";
-import {log, applyMixins} from "./Utils";
+import {LogLevel, logWithLevel, applyMixins} from "./Utils";
 import {MAGIC, FCTYPE, FCCHAN} from "./Constants";
 import {Model} from "./Model";
 import {Packet} from "./Packet";
@@ -20,6 +20,7 @@ export class Client implements EventEmitter {
 
     private net: any;
     private debug: boolean = false; // Set to true to enable debug logging
+    private choseToLogIn: boolean = false;
     private serverConfig: ServerConfig;
     private streamBuffer: Buffer;
     private streamBufferPosition: number;
@@ -27,6 +28,7 @@ export class Client implements EventEmitter {
     private client: any;
     private keepAlive: number;
     private manualDisconnect: boolean;
+    private reconnectTimer: NodeJS.Timer;
     private static userQueryId: number;
     private trafficCounter: number;
     private loginPacketReceived: boolean;
@@ -72,14 +74,6 @@ export class Client implements EventEmitter {
     public eventNames: () => string[];
     public listenerCount: (type: string) => number;
 
-    // Simple helper log function that adds a timestamp and supports filtering 'debug' only messages
-    private log(msg: string, debugOnly: boolean = false): void {
-        if (debugOnly && !this.debug) {
-            return;
-        }
-        log(msg);
-    }
-
     // Reads data from the socket as quickly as possible and stores it in an internal buffer
     // readData is invoked by the "on data" event of the net.client object currently handling
     // the TCP connection to the MFC servers.
@@ -99,7 +93,8 @@ export class Client implements EventEmitter {
     //
     // This is an internal method, don't call it directly.
     private _packetReceived(packet: Packet): void {
-        this.log(packet.toString(), true);
+        logWithLevel(LogLevel.TRACE, packet.toString());
+        // @TODO - Consider incrementing this counter only on SESSIONSTATE packets
         this.trafficCounter++;
 
         // Special case some packets to update and maintain internal state
@@ -107,13 +102,13 @@ export class Client implements EventEmitter {
             case FCTYPE.LOGIN:
                 // Store username and session id returned by the login response packet
                 if (packet.nArg1 !== 0) {
-                    this.log("Login failed for user '" + this.username + "' password '" + this.password + "'");
+                    logWithLevel(LogLevel.ERROR, "Login failed for user '" + this.username + "' password '" + this.password + "'");
                     throw new Error("Login failed");
                 } else {
                     this.sessionId = packet.nTo;
                     this.uid = packet.nArg2;
                     this.username = packet.sMessage as string;
-                    this.log("Login handshake completed. Logged in as '" + this.username + "' with sessionId " + this.sessionId);
+                    logWithLevel(LogLevel.INFO, "Login handshake completed. Logged in as '" + this.username + "' with sessionId " + this.sessionId);
                     this.loginPacketReceived = true;
                     Client.currentReconnectSeconds = Client.initialReconnectSeconds;
                 }
@@ -385,7 +380,11 @@ export class Client implements EventEmitter {
                     content = content.substr(startIndex, endIndex - startIndex);
 
                     // Then massage the function somewhat and prepend some prerequisites
-                    content = "var document = {cookie: ''};var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;function bind(that,f){return f.bind(that);}" + content.replace(/this.createRequestObject\(\)/g, "new XMLHttpRequest()").replace(/new MfcImageHost\(\)/g, "{host: function(){return '';}}").replace(/this\.Reset\(\);/g, "this.Reset();this.oReq = new XMLHttpRequest();");
+                    content = "var document = {cookie: '', domain: 'myfreecams.com'};var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;function bind(that,f){return f.bind(that);}" + content;
+                    content = content.replace(/this.createRequestObject\(\)/g, "new XMLHttpRequest()");
+                    content = content.replace(/new MfcImageHost\(\)/g, "{host: function(){return '';}}");
+                    content = content.replace(/this\.Reset\(\);/g, "this.Reset();this.oReq = new XMLHttpRequest();");
+                    content = content.replace(/MfcClientRes/g, "undefined");
                     return content;
                 }).then((obj) => {
                     this.emoteParser = new obj.ParseEmoteInput();
@@ -420,7 +419,7 @@ export class Client implements EventEmitter {
     // Sends a message back to MFC in the expected packet format
     // usually nTo==0, nArg1==0, nArg2==0, sMsg==null
     public TxCmd(nType: FCTYPE, nTo: number = 0, nArg1: number = 0, nArg2: number = 0, sMsg?: string): void {
-        this.log("TxCmd Sending - nType: " + nType + ", nTo: " + nTo + ", nArg1: " + nArg1 + ", nArg2: " + nArg2 + ", sMsg:" + sMsg, true);
+        logWithLevel(LogLevel.VERBOSE, "TxCmd Sending - nType: " + nType + ", nTo: " + nTo + ", nArg1: " + nArg1 + ", nArg2: " + nArg2 + ", sMsg:" + sMsg);
         if (sMsg && (nType === FCTYPE.CMESG || nType === FCTYPE.PMESG)) {
             if (sMsg.match(/([\u0000-\u001f\u0022-\u0026\u0080-\uffff]+)/)) { sMsg = escape(sMsg).replace(/%20/g, " "); }
         }
@@ -560,6 +559,7 @@ export class Client implements EventEmitter {
         if (arguments.length > 1) {
             throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
         }
+        this.choseToLogIn = doLogin;
         return new Promise((resolve, reject) => {
             // Reset any read buffers so we are in a consistent state
             this.streamBuffer = new Buffer(0);
@@ -568,7 +568,7 @@ export class Client implements EventEmitter {
 
             this.ensureServerConfigIsLoaded().then(() => {
                 let chatServer = this.serverConfig.chat_servers[Math.floor(Math.random() * this.serverConfig.chat_servers.length)];
-                this.log("Connecting to MyFreeCams chat server " + chatServer + "...");
+                logWithLevel(LogLevel.INFO, "Connecting to MyFreeCams chat server " + chatServer + "...");
 
                 this.hookModelsLoaded();
 
@@ -603,7 +603,7 @@ export class Client implements EventEmitter {
                             // If we haven't received any packets, even a ping response,
                             // in 2+ minutes, then we may not really be connected anymore.
                             // Kill the connection and try reconnecting again...
-                            this.log("Server has not responded in over 2 minutes. Trying to reconnect now.");
+                            logWithLevel(LogLevel.INFO, "Server has not responded in over 2 minutes. Trying to reconnect now.");
                             this.client.removeAllListeners("end");
                             this.client.end();
                             this.client = undefined;
@@ -630,8 +630,14 @@ export class Client implements EventEmitter {
             this.username = "guest";
         }
         if (!this.manualDisconnect) {
-            this.log(`Disconnected from MyFreeCams.  Reconnecting in ${Client.currentReconnectSeconds} seconds...`);
-            setTimeout(this.connect.bind(this), Client.currentReconnectSeconds * 1000);
+            logWithLevel(LogLevel.INFO, `Disconnected from MyFreeCams.  Reconnecting in ${Client.currentReconnectSeconds} seconds...`);
+            clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = setTimeout(() => {
+                this.connect(this.choseToLogIn).catch((r) => {
+                    logWithLevel(LogLevel.ERROR, `Connection failed: ${r}`);
+                    this.disconnected();
+                });
+            }, Client.currentReconnectSeconds * 1000);
             // Gradually increase the reconnection time up to Client.maximumReconnectSeconds.
             // currentReconnectSeconds will be reset to initialReconnectSeconds once we have
             // successfully logged in.
@@ -714,6 +720,7 @@ export class Client implements EventEmitter {
         if (this.client !== undefined) {
             this.manualDisconnect = true;
             clearInterval(this.keepAlive);
+            clearTimeout(this.reconnectTimer);
             this.client.end();
             this.client = undefined;
         }

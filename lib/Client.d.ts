@@ -10,6 +10,7 @@ export declare class Client implements EventEmitter {
     uid: number;
     private net;
     private debug;
+    private choseToLogIn;
     private serverConfig;
     private streamBuffer;
     private streamBufferPosition;
@@ -17,6 +18,7 @@ export declare class Client implements EventEmitter {
     private client;
     private keepAlive;
     private manualDisconnect;
+    private reconnectTimer;
     private static userQueryId;
     private trafficCounter;
     private loginPacketReceived;
@@ -38,7 +40,6 @@ export declare class Client implements EventEmitter {
     emit: (event: string, ...args: any[]) => boolean;
     eventNames: () => string[];
     listenerCount: (type: string) => number;
-    private log(msg, debugOnly?);
     private _readData(buf);
     private _packetReceived(packet);
     private _readPacket();

@@ -1,5 +1,30 @@
 import * as assert from "assert";
 
+export enum LogLevel {
+    SILENT,     // Nothing
+    ERROR,      // Only fatal or state corrupting errors
+    WARNING,    // Non-fatal warnings
+    INFO,       // Status info
+    VERBOSE,    // More verbose status info
+    DEBUG,      // Debug information that won't be useful to most people
+    TRACE,      // Debug information plus the entire packet log
+}
+
+let logLevel = LogLevel.INFO;
+
+export function setLogLevel(level: LogLevel) {
+    "use strict";
+    logLevel = level;
+}
+
+// Like "log" but respects different levels
+export function logWithLevel(level: LogLevel, msg: string, fileRoot?: string, consoleFormatter?: (msg: string) => string): void {
+    "use strict";
+    if (logLevel >= level) {
+        log(msg, fileRoot, consoleFormatter);
+    }
+}
+
 // Helper logging function that timestamps each message and optionally outputs to a file as well
 export function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) => string): void {
     "use strict";

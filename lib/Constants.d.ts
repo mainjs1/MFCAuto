@@ -7,6 +7,9 @@ export declare enum STATE {
     Online = 90,
     Offline = 127,
 }
+export declare enum CLIENT {
+    "VERSION_REQUIRED" = 20060925,
+}
 export declare enum DISPLAY {
     "PM_INLINE_WHISPER" = 1,
     "PM_INLINE_ALL" = 2,
@@ -25,6 +28,11 @@ export declare enum EVSESSION {
     "UPDATE" = 103,
     "STOP" = 104,
 }
+export declare enum EVUP {
+    "NONE" = 0,
+    "DIFF" = 1,
+    "FULL" = 2,
+}
 export declare enum FCACCEPT {
     "NOBODY" = 0,
     "FRIENDS" = 1,
@@ -34,7 +42,29 @@ export declare enum FCACCEPT {
     "V2_MODELS" = 32,
     "V2_PREMIUMS" = 64,
     "V2_BASICS" = 128,
-    "V2_ALL" = 240,
+    "V2_BOOKMARKS" = 256,
+    "V2_TOPFRIENDS" = 512,
+}
+export declare enum FCACT {
+    "CHAN_TIP" = 1006,
+    "CHAN_BAN" = 1011,
+    "CHAN_UNBAN" = 1012,
+    "CHAN_JOIN" = 1051,
+    "CHAN_PART" = 1052,
+    "CHAN_TOPIC" = 1061,
+    "CHAN_WHITEBOARD_ON" = 1101,
+    "CHAN_WHITEBOARD_OFF" = 1102,
+    "LOGIN" = 8001,
+    "LOGOUT" = 8002,
+}
+export declare enum FCAPP {
+    "NONE" = 0,
+    "MASTER" = 1,
+    "CHAT" = 2,
+    "WORKER" = 3,
+    "AUTH" = 4,
+    "LOADTEST" = 5,
+    "TRANSCODER" = 6,
 }
 export declare enum FCBAN {
     "NONE" = 0,
@@ -44,18 +74,36 @@ export declare enum FCBAN {
 }
 export declare enum FCCHAN {
     "NOOPT" = 0,
+    "EVENT_NONE" = 0,
     "JOIN" = 1,
-    "ERR_NOCHANNEL" = 2,
+    "EVENT_CLEARCHAT" = 1,
     "PART" = 2,
+    "ERR_NOCHANNEL" = 2,
+    "EVENT_MUTE" = 2,
     "ERR_NOTMEMBER" = 3,
+    "EVENT_TOPIC" = 3,
     "OLDMSG" = 4,
     "ERR_GUESTMUTE" = 4,
+    "EVENT_COUNTDOWN" = 4,
     "ERR_GROUPMUTE" = 5,
+    "EVENT_KICK" = 5,
     "ERR_NOTALLOWED" = 6,
-    "ERR_CONTENT" = 7,
+    "EVENT_RESERVED_001" = 6,
+    "EVENT_RESERVED_002" = 7,
     "HISTORY" = 8,
-    "CAMSTATE" = 16,
+    "EVENT_RESERVED_003" = 8,
+    "EVENT_RESERVED_004" = 9,
+    "EVENT_RESERVED_005" = 10,
+    "EVENT_RESERVED_006" = 11,
+    "EVENT_RESERVED_007" = 12,
+    "EVENT_RESERVED_008" = 13,
+    "EVENT_RESERVED_009" = 14,
+    "EVENT_RESERVED_010" = 15,
     "LIST" = 16,
+    "EVENT_RESERVED_011" = 16,
+    "CAMSTATE" = 16,
+    "EVENT_RESERVED_012" = 17,
+    "EVENT_RESERVED_013" = 18,
     "WELCOME" = 32,
     "BATCHPART" = 64,
     "EXT_USERNAME" = 128,
@@ -74,6 +122,32 @@ export declare enum FCGROUP {
     "DECLINED" = 4,
     "UNAVAILABLE" = 5,
     "SESSION" = 9,
+}
+export declare enum FCL {
+    "NULL" = 0,
+    "FRIENDS" = 1,
+    "IGNORES" = 2,
+    "BOOKMARKS" = 3,
+    "HIDDEN" = 4,
+    "HPFRIENDS" = 5,
+    "TOPFRIENDS" = 6,
+    "NEWS_SUBS" = 7,
+    "NEWS_HIDDEN" = 8,
+    "MYWEBCAM_ALLOW" = 9,
+    "MYWEBCAM_DENY" = 10,
+    "BLOCKS_STATES" = 11,
+    "BLOCKS_COUNTRIES" = 12,
+    "ROOMFILTERS" = 13,
+    "TAGS" = 14,
+    "CAMS" = 15,
+    "ROOMMATES" = 16,
+    "RESERVED_17" = 17,
+    "RESERVED_18" = 18,
+    "RESERVED_19" = 19,
+    "RESERVED_20" = 20,
+    "RESERVED_21" = 21,
+    "RESERVED_22" = 22,
+    "RESERVED_23" = 23,
 }
 export declare enum FCLEVEL {
     "GUEST" = 0,
@@ -129,7 +203,22 @@ export declare enum FCOPT {
     "GUESTMUTE" = 4096,
     "BASICMUTE" = 8192,
     "SMALLCAPS" = 16384,
-    "BOOKMARK" = 16384,
+    "XMPP" = 32768,
+    "WHITEBOARD1" = 65536,
+    "WHITEBOARD2" = 131072,
+}
+export declare enum FCPORT {
+    "EDGE_POLICY" = 843,
+    "MASTER_EDGE" = 4000,
+    "MASTER_AUTH" = 4001,
+    "AUTH_DATAGRAM" = 4002,
+    "MASTER_WORKER" = 4003,
+    "EDGE_WORKER" = 4004,
+    "EDGE_CLIENT1" = 5001,
+    "EDGE_AJAX" = 8080,
+    "EDGE_CLIENT3" = 8100,
+    "EDGE_WEBSOCKGW" = 8101,
+    "EDGE_CLIENT2" = 8550,
 }
 export declare enum FCRESPONSE {
     "SUCCESS" = 0,
@@ -145,25 +234,45 @@ export declare enum FCRESPONSE {
     "INVALIDUSER" = 10,
     "NOACCESS" = 11,
     "NOSPACE" = 12,
+    "INVALIDREQ" = 13,
+    "INVALIDARG" = 14,
+    "NOTFOUND" = 15,
+    "INSUFFICIENT" = 16,
 }
-export declare enum FCSERV {
+export declare enum FCRPC {
     "NONE" = 0,
-    "VIDEO_CAM2CAM" = 1,
-    "VIDEO_MODEL" = 2,
-    "VIDEO_RESV2" = 4,
-    "VIDEO_RESV3" = 8,
-    "CHAT_MASTER" = 16,
-    "CHAT_SLAVE" = 32,
-    "CHAT_RESV2" = 64,
-    "CHAT_RESV3" = 128,
-    "AUTH" = 256,
-    "AUTH_RESV1" = 512,
-    "AUTH_RESV2" = 1024,
-    "AUTH_RESV3" = 2048,
-    "TRANS" = 4096,
-    "TRANS_RESV1" = 8192,
-    "TRANS_RESV2" = 16384,
-    "TRANS_RESV3" = 32768,
+    "UPDATEFRIEND" = 1,
+    "UPDATEIGNORE" = 2,
+    "RESLOADED" = 3,
+    "W_READY" = 4,
+    "W_OFFLINEQUERY" = 5,
+    "W_FRIENDLIST" = 6,
+    "W_IGNORELIST" = 7,
+    "W_EXT_REQUEST" = 8,
+    "W_EXT_RESPONSE" = 9,
+}
+export declare enum FCS {
+    "SUBSCRIBE" = 1,
+    "SYNC" = 2,
+    "SESSION" = 10,
+    "BAN" = 11,
+    "MODEL" = 12,
+    "EVENT" = 13,
+    "EVENT2" = 14,
+    "EXTDATA" = 15,
+    "GWCONNECT" = 16,
+    "MUTE" = 18,
+    "AUTHREQ" = 100,
+    "BANREQ" = 101,
+    "EVENTREQ" = 102,
+    "EVENTRESP" = 103,
+    "SENDEVENT" = 104,
+    "SENDEVENT2" = 105,
+}
+export declare enum FCSBAN {
+    "NONE" = 0,
+    "USER" = 1,
+    "IP" = 2,
 }
 export declare enum FCTYPE {
     "CLIENT_DISCONNECTED" = -5,
@@ -183,11 +292,9 @@ export declare enum FCTYPE {
     "ADDFRIENDREQ" = 9,
     "USERNAMELOOKUP" = 10,
     "ZBAN" = 11,
-    "BROADCASTPROFILE" = 11,
     "BROADCASTNEWS" = 12,
     "ANNOUNCE" = 13,
     "MANAGELIST" = 14,
-    "MANAGELISTS" = 14,
     "INBOX" = 15,
     "GWCONNECT" = 16,
     "RELOADSETTINGS" = 17,
@@ -236,7 +343,6 @@ export declare enum FCTYPE {
     "UNBAN" = 60,
     "SETWELCOME" = 61,
     "CHANOP" = 62,
-    "PERMABAN" = 62,
     "LISTCHAN" = 63,
     "TAGS" = 64,
     "SETPCODE" = 65,
@@ -263,8 +369,8 @@ export declare enum FCTYPE {
     "LOGOUT" = 99,
 }
 export declare enum FCUCR {
-    "CREATOR" = 0,
     "VM_LOUNGE" = 0,
+    "CREATOR" = 0,
     "VM_MYWEBCAM" = 1,
     "FRIENDS" = 1,
     "MODELS" = 2,
@@ -277,6 +383,9 @@ export declare enum FCUPDATE {
     "NONE" = 0,
     "MISSMFC" = 1,
     "NEWTIP" = 2,
+    "REGION_SAFE" = 3,
+    "CAMSCORE" = 4,
+    "ROOMFILTER" = 5,
 }
 export declare enum FCVIDEO {
     "TX_IDLE" = 0,
@@ -296,6 +405,13 @@ export declare enum FCVIDEO {
     "NULL" = 126,
     "OFFLINE" = 127,
     "UNKNOWN" = 127,
+}
+export declare enum FCW {
+    "STATE_INIT" = 0,
+    "STATE_READY" = 1,
+    "STATE_WORKING" = 2,
+    "STATE_WAITING" = 3,
+    "STATE_INVALID" = 4,
 }
 export declare enum FCWINDOW {
     "NO_USER_PM" = 20,
@@ -333,6 +449,9 @@ export declare enum LOUNGE {
     "MASK_NO_CAMSNAPS" = 2,
     "MASK_LOUNGE_MODE" = 4,
 }
+export declare enum MAX {
+    "FCL" = 24,
+}
 export declare enum MODEL {
     "LIST_ICON_NEW_MODEL" = 1,
     "LIST_ICON_RECOMMEND" = 2,
@@ -340,6 +459,9 @@ export declare enum MODEL {
     "LIST_ICON_RECENT" = 8,
     "LIST_ICON_MISSMFC" = 16,
     "LIST_ICON_TRENDING" = 32,
+    "LIST_ICON_CUSTOM_ALERTS" = 64,
+    "VERSION_REQUIRED" = 220130324,
+    "VERSION_MODELWEB" = 320110101,
 }
 export declare enum MODELORDER {
     "NONE" = 0,
@@ -357,6 +479,24 @@ export declare enum MYWEBCAM {
     "ONLYMODELS" = 3,
     "FRIENDSANDMODELS" = 4,
     "WHITELIST" = 5,
+    "FRIEND_ID" = 100,
+}
+export declare enum PLAT {
+    "MFC" = 1,
+    "CAM" = 2,
+}
+export declare enum PLATFORM {
+    "NONE" = 0,
+    "MFC" = 1,
+    "CAMMUNITY" = 2,
+}
+export declare enum SERVER {
+    "VERSION" = 20071218,
+    "VERSION_REQUIRED" = 20071218,
+}
+export declare enum SESSION {
+    "ID_START" = 75000000,
+    "ID_END" = 950000000,
 }
 export declare enum TKOPT {
     "NONE" = 0,
@@ -375,13 +515,30 @@ export declare enum TKOPT {
     "TIP_FROMROOM" = 16384,
     "TIP_PUBLICMSG" = 32768,
     "TIP_HISTORY" = 65536,
+    "TIP_SILENT" = 131072,
+    "TIP_NOCOUNT" = 262144,
     "HDVIDEO" = 1048576,
+}
+export declare enum USER {
+    "ID_START" = 100,
+    "ID_END" = 50000000,
 }
 export declare enum USEREXT {
     "NUM" = 0,
     "STRING" = 1,
     "DATA" = 2,
     "STAMP" = 3,
+}
+export declare enum V1 {
+    "FLV" = 0,
+    "F4V" = 1,
+}
+export declare enum V2 {
+    "NONE" = 2,
+    "FLV" = 4,
+    "F4V" = 8,
+    "MP4X" = 16,
+    "MP4W" = 32,
 }
 export declare enum WEBCAM {
     "SECURITY_EVERYONE" = 0,
@@ -397,4 +554,8 @@ export declare enum WINDOW {
     "MODE_DESKTOP_DHTML" = 1,
     "MODE_BROWSER" = 2,
     "MODE_MOBILE_DHTML" = 2,
+}
+export declare enum WORKER {
+    "ID_START" = 50000000,
+    "ID_END" = 75000000,
 }

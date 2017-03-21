@@ -65,7 +65,7 @@ Sends a command to the MFC chat server. In practice, I rarely use this directly 
 ---
 
 ### joinRoom(id: number): void
-Joins the given model's chat room. This is required to start receiving her room chat. This call can fail if you're banned from the model's room. There is no built-in way to detect such a failures. Trial and error has shown me that you'll receive an FCTYPE.BROADCASTPROFILE packet when you attempt to enter a room you're banned from.  You can set up a separate listener for such a packet and handle the error yourself.
+Joins the given model's chat room. This is required to start receiving her room chat. This call can fail if you're banned from the model's room. There is no built-in way to detect such a failures. Trial and error has shown me that you'll receive an FCTYPE.ZBAN packet when you attempt to enter a room you're banned from.  You can set up a separate listener for such a packet and handle the error yourself.
 
 ---
 
