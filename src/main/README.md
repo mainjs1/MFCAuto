@@ -2,7 +2,7 @@
 ## Client class
 
 ### constructor(username: string = "guest", password: string = "guest")
-Creates a Client instance with the given credentials, or with guest credentials by default.  [See my comment here if you wish to log in with a real account.](https://github.com/ZombieAlex/MFCAuto/blob/master/src/main/Client.ts#L23)
+Creates a Client instance with the given credentials, or with guest credentials by default.  [See my comment here if you wish to log in with a real account.](https://github.com/ZombieAlex/MFCAuto/blob/master/src/main/Client.ts#L40)
 
 You can have multiple Client instances active and connected at once. They will not interfere with each other.
 
@@ -43,7 +43,7 @@ Disconnects a connected client. If the connected socket was the only thing keepi
 ### on(event: string, listener: (packet: Packet) => void): void
 Every time MFCAuto receives a complete packet from the server, two events are emitted.  One named "ANY" and another named after the FCTYPE of the received packet.
 
-[See Constants.ts for all possible FCTYPEs.](https://github.com/ZombieAlex/MFCAuto/blob/master/src/main/Constants.ts#L199) There are many, and I won't claim to know what they all mean.
+[See Constants.ts for all possible FCTYPEs.](https://github.com/ZombieAlex/MFCAuto/blob/master/src/main/Constants.ts#L317) There are many, and I won't claim to know what they all mean.
 
 ```javascript
 //Log all received packets
@@ -235,7 +235,7 @@ Most of these properties are optional, and might be undefined for any given mode
 |uid|user id|The model's user ID|number
 |nm|name|The model's current name|string
 |sid|session id|The model's MFC session ID|number
-|vs|video state|The general status of a model (online, offline, away, freechat, private, or groupshow). There are many other status possibilities, but those are the ones you likely care about.|[FCVIDEO](https://github.com/ZombieAlex/MFCAuto/blob/master/src/main/Constants.ts#L312) or the more friendly form, [STATE](https://github.com/ZombieAlex/MFCAuto/blob/master/src/main/Constants.ts#L8)
+|vs|video state|The general status of a model (online, offline, away, freechat, private, or groupshow). There are many other status possibilities, but those are the ones you likely care about.|[FCVIDEO](https://github.com/ZombieAlex/MFCAuto/blob/master/src/main/Constants.ts#L317) or the more friendly form, [STATE](https://github.com/ZombieAlex/MFCAuto/blob/master/src/main/Constants.ts#L8)
 |truepvt|true private|If a model is in vs STATE.Private and this value is 1, then that private is a true private. There is no unique state for true private, you have to check both vs and truepvt values.|number (0 or 1)
 |tags| |The model's self-created tags. This property is on the model instance directly, not .bestSession.|Array&lt;string&gt;
 |camscore| |The model's current camscore|number
