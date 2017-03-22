@@ -1,4 +1,4 @@
-#MFCAuto.js
+# MFCAuto.js
 
 A Node.js module for interacting with MyFreeCams servers. In a nutshell, this module allows a user to log on to MFC, listen for specific server events, and take action on those events.
 
@@ -25,7 +25,7 @@ $ npm install ZombieAlex/MFCAuto
 
 ------------
 
-##Examples
+## Examples
 
 ### Query MFC for a model's details
 Here we query MFC for details about a specific model, AspenRae in this case, listen for the response and print it out before exiting.
