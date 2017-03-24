@@ -621,7 +621,9 @@ export class Client implements EventEmitter {
     // it handles the reconnect logic
     private disconnected() {
         clearInterval(this.keepAlive);
-        Client.connectedClientCount--;
+        if (Client.connectedClientCount > 0) {
+            Client.connectedClientCount--;
+        }
         this.loginPacketReceived = false;
         if (this.password === "guest" && this.username.startsWith("Guest")) {
             // If we had a successful guest login before, we'll have changed
