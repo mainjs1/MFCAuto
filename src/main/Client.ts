@@ -19,7 +19,6 @@ export class Client implements EventEmitter {
     public uid: number;
 
     private net: any;
-    private debug: boolean = false; // Set to true to enable debug logging
     private choseToLogIn: boolean = false;
     private serverConfig: ServerConfig;
     private streamBuffer: Buffer;
@@ -27,8 +26,9 @@ export class Client implements EventEmitter {
     private emoteParser: EmoteParser;
     private client: any;
     private keepAlive: number;
+    private currentlyConnected: boolean;
     private manualDisconnect: boolean;
-    private reconnectTimer: NodeJS.Timer;
+    private reconnectTimer?: NodeJS.Timer;
     private static userQueryId: number;
     private trafficCounter: number;
     private loginPacketReceived: boolean;
@@ -57,6 +57,7 @@ export class Client implements EventEmitter {
         this.streamBufferPosition = 0;
         this.manualDisconnect = false;
         this.loginPacketReceived = false;
+        this.currentlyConnected = false;
     }
 
     // Instance EventEmitter methods
@@ -439,7 +440,11 @@ export class Client implements EventEmitter {
             buf.write(sMsg, 28);
         }
 
-        this.client.write(buf);
+        if (this.client !== undefined) {
+            this.client.write(buf);
+        } else {
+            throw new Error("Cannot call TxCmd on a disconnected client");
+        }
     }
 
     public TxPacket(packet: Packet): void {
@@ -559,6 +564,7 @@ export class Client implements EventEmitter {
         if (arguments.length > 1) {
             throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
         }
+        logWithLevel(LogLevel.DEBUG, `[CLIENT] connect(${doLogin})`);
         this.choseToLogIn = doLogin;
         return new Promise((resolve, reject) => {
             // Reset any read buffers so we are in a consistent state
@@ -583,10 +589,16 @@ export class Client implements EventEmitter {
                     // Connecting without logging in is the rarer case, so make the default to log in
                     if (doLogin) {
                         this.login();
+                        // connectedClientCount is used to track when all clients receiving SESSIONSTATE
+                        // updates have disconnected, and as those are only sent for logged-in clients,
+                        // we shouldn't increment the counter for non-logged-in clients
+                        Client.connectedClientCount++;
+                        logWithLevel(LogLevel.DEBUG, `[CLIENT] connectedClientCount: ${Client.connectedClientCount}`);
                     }
 
-                    Client.connectedClientCount++;
-                    this.emit("CLIENT_CONNECTED");
+                    this.currentlyConnected = true;
+                    logWithLevel(LogLevel.DEBUG, `[CLIENT] emitting: CLIENT_CONNECTED, doLogin: ${doLogin}`);
+                    this.emit("CLIENT_CONNECTED", doLogin);
                     resolve();
                 });
 
@@ -620,9 +632,12 @@ export class Client implements EventEmitter {
     // Private method called when we lose a valid connection to the chat server
     // it handles the reconnect logic
     private disconnected() {
+        logWithLevel(LogLevel.DEBUG, `[CLIENT] disconnected()`);
+        this.currentlyConnected = false;
         clearInterval(this.keepAlive);
         if (Client.connectedClientCount > 0) {
             Client.connectedClientCount--;
+            logWithLevel(LogLevel.DEBUG, `[CLIENT] connectedClientCount: ${Client.connectedClientCount}`);
         }
         this.loginPacketReceived = false;
         if (this.password === "guest" && this.username.startsWith("Guest")) {
@@ -633,7 +648,7 @@ export class Client implements EventEmitter {
         }
         if (!this.manualDisconnect) {
             logWithLevel(LogLevel.INFO, `Disconnected from MyFreeCams.  Reconnecting in ${Client.currentReconnectSeconds} seconds...`);
-            clearTimeout(this.reconnectTimer);
+            clearTimeout(this.reconnectTimer as NodeJS.Timer);
             this.reconnectTimer = setTimeout(() => {
                 this.connect(this.choseToLogIn).catch((r) => {
                     logWithLevel(LogLevel.ERROR, `Connection failed: ${r}`);
@@ -649,7 +664,8 @@ export class Client implements EventEmitter {
         } else {
             this.manualDisconnect = false;
         }
-        this.emit("CLIENT_DISCONNECTED");
+        logWithLevel(LogLevel.DEBUG, `[CLIENT] emitting: CLIENT_DISCONNECTED, choseToLogIn: ${this.choseToLogIn}`);
+        this.emit("CLIENT_DISCONNECTED", this.choseToLogIn);
         if (Client.connectedClientCount === 0) {
             Model.reset();
         }
@@ -686,6 +702,7 @@ export class Client implements EventEmitter {
             }
             if (completedModels && completedFriends) {
                 this.removeListener("METRICS", modelListFinished);
+                logWithLevel(LogLevel.DEBUG, `[CLIENT] emitting: CLIENT_MODELSLOADED`);
                 this.emit("CLIENT_MODELSLOADED");
             }
         }
@@ -718,14 +735,32 @@ export class Client implements EventEmitter {
     // more graceful ways of doing this, involving sending
     // some kind of logout message to the server or something
     // but whatever
-    public disconnect(): void {
-        if (this.client !== undefined) {
-            this.manualDisconnect = true;
-            clearInterval(this.keepAlive);
-            clearTimeout(this.reconnectTimer);
-            this.client.end();
-            this.client = undefined;
-        }
+    public disconnect() {
+        logWithLevel(LogLevel.DEBUG, `[CLIENT] disconnect(), this.client is ${this.client !== undefined ? "defined" : "undefined"}`);
+        return new Promise((resolve) => {
+            if (this.client !== undefined) {
+                this.manualDisconnect = true;
+                clearInterval(this.keepAlive);
+                clearTimeout(this.reconnectTimer as NodeJS.Timer);
+                this.reconnectTimer = undefined;
+                if (this.currentlyConnected) {
+                    this.once("CLIENT_DISCONNECTED", () => {
+                        resolve();
+                    });
+                }
+                this.client.end();
+                this.client = undefined;
+
+                // If we're not currently connected, then calling
+                // this.client.end() will not cause CLIENT_DISCONNECTED
+                // to be emitted, so we shouldn't wait for that.
+                if (!this.currentlyConnected) {
+                    resolve();
+                }
+            } else {
+                resolve();
+            }
+        });
     }
 }
 applyMixins(Client, [EventEmitter]);

@@ -35,8 +35,9 @@ This method always logs in, because MFC servers won't send information for all o
 
 ---
 
-### disconnect(): void
-Disconnects a connected client. If the connected socket was the only thing keeping the NodeJS event loop alive, this will have the side-effect of ending the program.
+### disconnect(): Promise
+Disconnects a connected client. Returns a promise that resolves when the disconnect has completed.
+If the connected socket was the only thing keeping the NodeJS event loop alive, this will have the side-effect of ending the program.
 
 ---
 

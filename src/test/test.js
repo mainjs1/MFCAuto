@@ -1,16 +1,24 @@
 /* globals describe, it, before, after, afterEach */
-// To generate a test coverage report, from the root of the MFCAuto repo, run:
-//  istanbul cover .\node_modules\mocha\bin\_mocha ./src/test/test.js
-// That's assuming you have mocha installed locally and istanbul installed globally
-//@TODO - More response packet validation everywhere
+// These tests can be run via `npm test` and a coverage report
+// generated via istanbul with `npm run coverage`
 "use strict";
 let assert = require("assert");
 let mfc = require("../../lib/index.js");
 
+mfc.setLogLevel(mfc.LogLevel.SILENT);
+// mfc.setLogLevel(mfc.LogLevel.DEBUG); // Uncomment for debug spew
+
+function randInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 describe("Startup Scenarios", () => {
     let client = null;
-    afterEach(() => {
-        client.disconnect();
+    afterEach((done) => {
+        client.disconnect().then(() => {
+            assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should be 0 connected clients now");
+            done();
+        });
     });
     it("should be able to dynamically load the MFC server config", (done) => {
         client = new mfc.Client();
@@ -21,19 +29,63 @@ describe("Startup Scenarios", () => {
             done();
         });
     });
+    it("should properly handle multiple manual client disconnects", () => {
+        assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should be 0 connected clients now");
+        client.disconnect();
+        assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should still be 0 connected clients");
+        client.disconnect();
+        assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should really still be 0 connected clients");
+    });
     it("should be able to connect without logging in", (done) => {
         client = new mfc.Client();
-        client.connect(false).then(done);
+        assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should be 0 connected clients now");
+        client.connect(false).then(() => {
+            assert.strictEqual(mfc.Client.connectedClientCount, 0, "A client that's not logged in shouldn't count as connected");
+            assert.strictEqual(client.choseToLogIn, false, "choseToLogin should be false");
+            done();
+        });
     });
     it("should be able to log in as a guest", (done) => {
         client = new mfc.Client();
         assert.strictEqual(client.username.indexOf("guest"), 0, "We didn't start in the default state?");
+        assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should be 0 connected clients now");
         client.on("LOGIN", (packet) => {
+            assert.strictEqual(mfc.Client.connectedClientCount, 1, "Should be 1 connected clients now");
+            assert.strictEqual(client.choseToLogIn, true, "choseToLogin should be true");
             assert.strictEqual(packet.nArg1, 0, "Failed login error code");
             assert.strictEqual(client.username.indexOf("Guest"), 0, "We didn't log in as a guest successfully");
             done();
         });
         client.connect(true);
+    });
+    it("should be able to log in as two guests", (done) => {
+        client = new mfc.Client();
+        let client2 = new mfc.Client();
+        assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should be 0 connected clients now");
+        client.on("LOGIN", () => {
+            assert.strictEqual(mfc.Client.connectedClientCount, 1, "Should be 1 connected client now");
+            client2.connect(true);
+        });
+        client2.on("LOGIN", () => {
+            assert.strictEqual(mfc.Client.connectedClientCount, 2, "Should be 2 connected clients now");
+            client2.disconnect();
+        });
+        client2.on("CLIENT_DISCONNECTED", () => {
+            assert.strictEqual(mfc.Client.connectedClientCount, 1, "Should be 1 connected client again");
+            client.disconnect();
+        });
+        client.on("CLIENT_DISCONNECTED", () => {
+            assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should be 0 connected clients again");
+            done();
+        });
+        client.connect(true);
+    });
+    it("should handle TxCmd on a disconnected client gracefully", () => {
+        try {
+            client.joinRoom(3111899);
+        } catch (e) {
+            assert.strictEqual(e.toString(), "Error: Cannot call TxCmd on a disconnected client");
+        }
     });
 });
 
@@ -42,6 +94,7 @@ describe("Connected Scenarios", function () {
     let client = new mfc.Client();
     let queen;
     before((done) => {
+        assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should be 0 connected clients now");
         client.connectAndWaitForModels().then(() => {
             //Find the most popular model in free chat right now
             let popularModels = mfc.Model.findModels((m) => m.bestSession.vs === 0);
@@ -51,8 +104,11 @@ describe("Connected Scenarios", function () {
             done();
         });
     });
-    after(() => {
-        client.disconnect();
+    after((done) => {
+        client.disconnect().then(() => {
+            assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should be 0 connected clients now");
+            done();
+        });
     });
     describe("Client", () => {
         it("should be able to send a USERNAMELOOKUP query and parse a valid response", (done) => {
@@ -196,11 +252,11 @@ describe("Connected Scenarios", function () {
                     return false;
                 },
                 (m) => {
-                    mfc.log(`${m.nm} matched the filter`);
+                    mfc.logWithLevel(mfc.LogLevel.DEBUG, `${m.nm} matched the filter`);
                     done();
                 }//, Times out too often to wait for an exit
                 // (m) => {
-                //     mfc.log(`${m.nm} stopped matching the filter`);
+                //     mfc.logWithLevel(mfc.LogLevel.DEBUG, `${m.nm} stopped matching the filter`);
                 //     done();
                 // }
             );
@@ -211,11 +267,11 @@ describe("Connected Scenarios", function () {
             mfc.Model.when(
                 (m) => m.bestSession.vs === mfc.STATE.Online,
                 (m) => {
-                    mfc.log(`${m.nm} entered online`);
+                    mfc.logWithLevel(mfc.LogLevel.DEBUG, `${m.nm} entered online`);
                     matchedModels.add(m.uid);
                 },
                 (m) => {
-                    mfc.log(`${m.nm} left online`);
+                    mfc.logWithLevel(mfc.LogLevel.DEBUG, `${m.nm} left online`);
                     assert.ok(matchedModels.has(m.uid), "We got an onFalseAfterTrue callback for a model that never matched the filter to begin with?");
                     if (!isDone) {
                         done();
@@ -224,5 +280,51 @@ describe("Connected Scenarios", function () {
                 }
             );
         });
+    });
+});
+
+describe("Reconnect Scenarios", function () {
+    this.timeout(30000);
+    let client = null;
+    afterEach((done) => {
+        client.disconnect().then(() => {
+            assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should be 0 connected clients now");
+            done();
+        });
+    });
+    it("should recover from a socket disconnect", (done) => {
+        let firstConnect = true;
+        client = new mfc.Client();
+        client.on("LOGIN", () => {
+            if (firstConnect) {
+                firstConnect = false;
+                // Force disconnect after a random amount of time
+                setTimeout(() => client.client.end(), randInt(50, 1500));
+            } else {
+                // We reconnected after the disconnect, good
+                done();
+            }
+        });
+        client.connect();
+    });
+    it("should stop trying recover from a socket disconnect if disconnect() is called", (done) => {
+        client = new mfc.Client();
+        client.on("LOGIN", () => {
+            assert.strictEqual(mfc.Client.connectedClientCount, 1, "Should be 1 connected client now");
+            assert.strictEqual(client.currentlyConnected, true, "Should be connected");
+            setTimeout(() => client.client.end(), randInt(50, 1500));
+        });
+        client.on("CLIENT_DISCONNECTED", () => {
+            assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should be 0 connected clients now");
+            assert.ok(client.reconnectTimer !== undefined, "Should be trying to reconnect now");
+            client.disconnect().then(() => {
+                assert.strictEqual(client.reconnectTimer, undefined, "Should no longer be trying to reconnect");
+                assert.strictEqual(client.currentlyConnected, false, "Should not be connected");
+                assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should be 0 connected clients now");
+                done();
+            });
+        });
+        assert.strictEqual(client.reconnectTimer, undefined, "Should not be any reconnect timer yet");
+        client.connect();
     });
 });

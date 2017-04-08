@@ -1,5 +1,4 @@
 /// <reference types="node" />
-/// <reference types="es6-shim" />
 import { EventEmitter } from "events";
 import { FCTYPE } from "./Constants";
 import { Packet } from "./Packet";
@@ -9,7 +8,6 @@ export declare class Client implements EventEmitter {
     password: string;
     uid: number;
     private net;
-    private debug;
     private choseToLogIn;
     private serverConfig;
     private streamBuffer;
@@ -17,8 +15,9 @@ export declare class Client implements EventEmitter {
     private emoteParser;
     private client;
     private keepAlive;
+    private currentlyConnected;
     private manualDisconnect;
-    private reconnectTimer;
+    private reconnectTimer?;
     private static userQueryId;
     private trafficCounter;
     private loginPacketReceived;
@@ -61,6 +60,6 @@ export declare class Client implements EventEmitter {
     login(username?: string, password?: string): void;
     private hookModelsLoaded();
     connectAndWaitForModels(): Promise<{}>;
-    disconnect(): void;
+    disconnect(): Promise<{}>;
 }
 export declare type ClientEventCallback = (packet?: Packet) => void;

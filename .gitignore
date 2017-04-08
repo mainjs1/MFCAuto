@@ -1,4 +1,5 @@
 node_modules/
+coverage/
 src/main/tsconfig.json
 src/test/packetLog.txt
 packetLog.txt
