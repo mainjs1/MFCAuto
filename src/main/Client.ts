@@ -1,9 +1,11 @@
-import {AnyMessage, Message} from "./sMessages";
-import {EventEmitter} from "events";
-import {LogLevel, logWithLevel, applyMixins} from "./Utils";
-import {MAGIC, FCTYPE, FCCHAN} from "./Constants";
-import {Model} from "./Model";
-import {Packet} from "./Packet";
+import { AnyMessage, Message } from "./sMessages";
+import { EventEmitter } from "events";
+import { LogLevel, logWithLevel, applyMixins } from "./Utils";
+import { MAGIC, FCTYPE, FCCHAN, FCWOPT, FCL } from "./Constants";
+import { Model } from "./Model";
+import { Packet } from "./Packet";
+import { BaseMessage, ExtDataMessage, ManageListMessage } from "./sMessages";
+import * as http from "http";
 import * as assert from "assert";
 
 // Forward definitions for the TypeScript compiler
@@ -184,6 +186,70 @@ export class Client implements EventEmitter {
                 //  assert.fail("@TODO - We're not merging in bookmarks packets yet unfortunately...");
                 //  process.exit(1);
                 break;
+            case FCTYPE.EXTDATA:
+                if (packet.nTo === this.sessionId && packet.nArg2 === FCWOPT.REDIS_JSON) {
+                    this._handleExtData(packet.sMessage as ExtDataMessage);
+                }
+                break;
+            case FCTYPE.MANAGELIST:
+                if (packet.nArg2 > 0 && packet.sMessage && (packet.sMessage as ManageListMessage).rdata) {
+                    let rdata: any = this._processListData((packet.sMessage as ManageListMessage).rdata);
+                    let nType: FCL = packet.nArg2;
+                    let nListArg = 0;
+                    let metricType: FCTYPE = 0;
+
+                    let arr: any[] = rdata;
+                    switch (nType as FCL) {
+                        case FCL.ROOMMATES:
+                            // Fake the previous signal of the start of a room viewers dump
+                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.JOINCHAN, 0, arr.length, 0, undefined));
+                            arr.forEach((viewer: Message) => {
+                                this._packetReceived(new Packet(FCTYPE.JOINCHAN, packet.nFrom, packet.nTo, (packet.sMessage as ManageListMessage).channel, packet.nArg2, 0, viewer));
+                            });
+                            // Fake the previous signal of the end of a room viewers dump
+                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.JOINCHAN, arr.length, arr.length, 0, undefined));
+                            break;
+                        case FCL.CAMS:
+                            // Fake the previous signal of the start of a model list dump
+                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.SESSIONSTATE, 0, arr.length, 0, undefined));
+                            arr.forEach((model: Message) => {
+                                this._packetReceived(new Packet(FCTYPE.SESSIONSTATE, packet.nFrom, packet.nTo, packet.nArg1, model.sid, 0, model));
+                            });
+                            // Fake the previous signal of the end of a model list dump
+                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.SESSIONSTATE, arr.length, arr.length, 0, undefined));
+                            break;
+                        case FCL.FRIENDS:
+                            // Fake the previous signal of the start of a friend list dump
+                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDFRIEND, 0, arr.length, 0, undefined));
+                            arr.forEach((model: Message) => {
+                                this._packetReceived(new Packet(FCTYPE.ADDFRIEND, packet.nFrom, packet.nTo, model.uid, packet.nArg2, 0, model));
+                            });
+                            // Fake the previous signal of the end of a friend list dump
+                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDFRIEND, arr.length, arr.length, 0, undefined));
+                            break;
+                        case FCL.IGNORES:
+                            // Fake the previous signal of the start of a ignore list dump
+                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDFRIEND, 0, arr.length, 0, undefined));
+                            arr.forEach((user: Message) => {
+                                this._packetReceived(new Packet(FCTYPE.ADDFRIEND, packet.nFrom, packet.nTo, user.uid, packet.nArg2, 0, user));
+                            });
+                            // Fake the previous signal of the end of a ignore list dump
+                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDFRIEND, arr.length, arr.length, 0, undefined));
+                            break;
+                        case FCL.TAGS:
+                            // @TODO - Could fake Tags metrics here, but I wasn't ever using it and it's unlikely anyone else was either
+                            if (!Array.isArray(rdata)) {
+                                // Fake a tags packet
+                                this._packetReceived(new Packet(FCTYPE.TAGS, packet.nFrom, packet.nTo, packet.nArg1, packet.nArg2, packet.sPayload, rdata));
+                            } else {
+                                logWithLevel(LogLevel.DEBUG, `Client._packetReceived tags list that was an array?: ${JSON.stringify(rdata)}`);
+                            }
+                            break;
+                        default:
+                            logWithLevel(LogLevel.DEBUG, `Client._packetReceived unhandled list type on MANAGELIST packet: ${nType}`);
+                    }
+                }
+                break;
             default:
                 break;
         }
@@ -284,6 +350,88 @@ export class Client implements EventEmitter {
         }
     }
 
+    private _handleExtData(extData: ExtDataMessage) {
+        if (extData && extData.respkey) {
+            let url = "http://www.myfreecams.com/php/FcwExtResp.php?";
+            ["respkey", "type", "opts", "serv"].forEach((name) => {
+                url += `${name}=${(extData as any)[name]}&`;
+            });
+
+            logWithLevel(LogLevel.DEBUG, `Client._handleExtData: ${JSON.stringify(extData)} - '${url}'`);
+            http.get(url, (res: any) => {
+                let contents = "";
+                res.on("data", (chunk: string) => {
+                    contents += chunk;
+                });
+                res.on("end", () => {
+                    try {
+                        logWithLevel(LogLevel.DEBUG, `Client._handleExtData response: ${JSON.stringify(extData)} - '${url}'\n\t${contents}`);
+                        let p = new Packet(extData.msg.type, extData.msg.from, extData.msg.to, extData.msg.arg1, extData.msg.arg2, extData.msglen, JSON.parse(contents));
+                        this._packetReceived(p);
+                    } catch (e) {
+                        logWithLevel(LogLevel.DEBUG, `Client._handleExtData invalid JSON: ${JSON.stringify(extData)} - '${url}'\n\t${contents}`);
+                    }
+                });
+            }).on("error", (e: any) => {
+                logWithLevel(LogLevel.DEBUG, `Client._handleExtData error: ${e} - ${JSON.stringify(extData)} - '${url}'`);
+            });
+
+        }
+    }
+
+    private _processListData(rdata: any): any {
+        // Really MFC?  Really??  Ok, commence the insanity...
+        if (Array.isArray(rdata)) {
+            let result: Array<BaseMessage> = [];
+            let schema: any[] = rdata.shift();
+            let schemaMap: Map<number, string[]> = new Map() as Map<number, string[]>;
+            let schemaMapIndex = 0;
+            // Build a map of array index -> property path from the schema
+            schema.forEach((prop) => {
+                if (typeof prop === "object") {
+                    Object.keys(prop).forEach((key) => {
+                        if (Array.isArray(prop[key])) {
+                            prop[key].forEach((prop2: string) => {
+                                schemaMap.set(schemaMapIndex++, [key, prop2]);
+                            });
+                        }else {
+                            logWithLevel(LogLevel.DEBUG, `Client._packetReceived. N-level deep schemas? ${JSON.stringify(schema)}`);
+                        }
+                    });
+                } else {
+                    schemaMap.set(schemaMapIndex++, [prop]);
+                }
+            });
+            rdata.forEach((record: Array<string | number>) => {
+                // Now apply the schema
+                let fakeSessionState: Packet;
+                let msg: any = {};
+                for (let i = 0; i < record.length; i++) {
+                    if (schemaMap.has(i)) {
+                        let path = schemaMap.get(i);
+                        if (path.length === 1) {
+                            msg[path[0]] = record[i];
+                        } else if (path.length === 2) {
+                            if (msg[path[0]] === undefined) {
+                                msg[path[0]] = {};
+                            }
+                            msg[path[0]][path[1]] = record[i];
+                        } else {
+                            logWithLevel(LogLevel.DEBUG, `Client._packetReceived. N-level deep schemas? ${JSON.stringify(schema)}`);
+                        }
+                    } else {
+                        logWithLevel(LogLevel.DEBUG, `Client._packetReceived. Not enough elements in schema\n\tSchema: ${JSON.stringify(schema)}\n\tData: ${JSON.stringify(record)}`);
+                    }
+                }
+
+                result.push(msg);
+            });
+            return result;
+        } else {
+            return rdata;
+        }
+    }
+
     // Takes an input chat string as you would type it in browser in an MFC
     // chat room, like "I am happy :mhappy", and formats the message as MFC
     // would internally before sending it to the server, "I am happy #~ue,2c9d2da6.gif,mhappy~#"
@@ -330,7 +478,6 @@ export class Client implements EventEmitter {
             throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
         }
         return new Promise((resolve, reject) => {
-            let http: any = require("http");
             let load: any = require("load");
             http.get(url, function (res: any) {
                 let contents = "";
@@ -407,7 +554,7 @@ export class Client implements EventEmitter {
             if (this.serverConfig !== undefined) {
                 resolve();
             } else {
-                this.loadFromMFC("http://www.myfreecams.com/_js/serverconfig.js", (text) => {
+                this.loadFromMFC(`http://www.myfreecams.com/_js/serverconfig.js?nc=${Math.random()}`, (text) => {
                     return "var serverConfig = " + text;
                 }).then((obj) => {
                     this.serverConfig = obj.serverConfig;
@@ -687,9 +834,14 @@ export class Client implements EventEmitter {
         let completedModels = false;
         let completedFriends = true;
         function modelListFinished(packet: Packet) {
+            // for METRICS, nTO is an FCTYPE indicating the type of data that's
+            // starting or ending, nArg1 is the count of data received so far, and nArg2
+            // is the total count of data, so when nArg1 === nArg2, we're done
+            // So...
             // nTo of 2 means these are metrics for friends
             // nTo of 20 means these are metrics for online models in general
-            // nTo of 64 means something else that I'm not sure about, maybe region hidden models?
+            // nTo of 64 means these are for tags
+            // nTo of 51 is joinchan
             if (packet.nTo === 2) {
                 if (packet.nArg1 !== packet.nArg2) {
                     completedFriends = false;

@@ -1,4 +1,5 @@
-export declare type AnyMessage = FCTypeLoginResponse | FCTypeSlaveVShareResponse | FCTypeTagsResponse | FCTokenIncResponse | RoomDataMessage | Message;
+import { FCTYPE } from "./Constants";
+export declare type AnyMessage = FCTypeLoginResponse | FCTypeSlaveVShareResponse | FCTypeTagsResponse | FCTokenIncResponse | RoomDataMessage | ExtDataMessage | ManageListMessage | Message;
 export declare type FCTypeLoginResponse = string;
 export declare type FCTypeSlaveVShareResponse = number[];
 export interface FCTypeTagsResponse {
@@ -20,6 +21,28 @@ export interface RoomDataMessage {
     src: string;
     topic: string;
     total: number;
+}
+export interface ExtDataMessage {
+    msg: {
+        arg1: number;
+        arg2: number;
+        from: number;
+        len: number;
+        to: number;
+        type: FCTYPE;
+    };
+    msglen: number;
+    opts: number;
+    respkey: number;
+    serv: number;
+    type: FCTYPE;
+}
+export interface ManageListMessage {
+    count: number;
+    op: number;
+    owner: number;
+    rdata: any[] | FCTypeTagsResponse;
+    channel: any;
 }
 export interface BaseMessage {
     sid: number;

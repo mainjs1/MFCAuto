@@ -42,6 +42,8 @@ export declare class Client implements EventEmitter {
     private _readData(buf);
     private _packetReceived(packet);
     private _readPacket();
+    private _handleExtData(extData);
+    private _processListData(rdata);
     EncodeRawChat(rawMsg: string): Promise<string>;
     private loadFromMFC(url, massager?);
     private ensureEmoteParserIsLoaded();

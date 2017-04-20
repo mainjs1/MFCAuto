@@ -166,16 +166,22 @@ export enum FCL {
     "BLOCKS_STATES" = 11,
     "BLOCKS_COUNTRIES" = 12,
     "ROOMFILTERS" = 13,
-    "TAGS" = 14,
-    "CAMS" = 15,
-    "ROOMMATES" = 16,
+    "BANS" = 14,
+    "MUTES" = 15,
+    "RESERVED_16" = 16,
     "RESERVED_17" = 17,
     "RESERVED_18" = 18,
     "RESERVED_19" = 19,
-    "RESERVED_20" = 20,
-    "RESERVED_21" = 21,
-    "RESERVED_22" = 22,
+    "TAGS" = 20,
+    "CAMS" = 21,
+    "ROOMMATES" = 22,
     "RESERVED_23" = 23,
+    "RESERVED_24" = 24,
+    "RESERVED_25" = 25,
+    "RESERVED_26" = 26,
+    "RESERVED_27" = 27,
+    "RESERVED_28" = 28,
+    "RESERVED_29" = 29,
 }
 
 export enum FCLEVEL {
@@ -351,6 +357,7 @@ export enum FCTYPE {
     "SETTING" = 28,
     "BWSTATS" = 29,
     "SETGUESTNAME" = 30,
+    "TKX" = 30,
     "SETTEXTOPT" = 31,
     "SERVERCONFIG" = 32,
     "MODELGROUP" = 33,
@@ -402,6 +409,8 @@ export enum FCTYPE {
     "STATEDUMP" = 79,
     "RECOMMEND" = 80,
     "EXTDATA" = 81,
+    "NOTIFY" = 84,
+    "PUBLISH" = 85,
     "ZGWINVALID" = 95,
     "CONNECTING" = 96,
     "CONNECTED" = 97,
@@ -499,7 +508,7 @@ export enum LOUNGE {
 }
 
 export enum MAX {
-    "FCL" = 24,
+    "FCL" = 30,
 }
 
 export enum MODEL {

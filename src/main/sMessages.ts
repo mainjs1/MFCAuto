@@ -1,3 +1,5 @@
+import {FCTYPE} from "./Constants";
+
 // The Packet class represents a complete message from the MFC chat server.  Many
 // of those messages will contain an sMessage JSON payload.  The types in this file
 // attempt to capture all the possible permutations of sMessages.
@@ -8,7 +10,7 @@
 // understanding of the MFC communication protocol.
 
 // The AnyMessage union describes all possible sMessage types
-export type AnyMessage = FCTypeLoginResponse|FCTypeSlaveVShareResponse|FCTypeTagsResponse|FCTokenIncResponse|RoomDataMessage|Message;
+export type AnyMessage = FCTypeLoginResponse|FCTypeSlaveVShareResponse|FCTypeTagsResponse|FCTokenIncResponse|RoomDataMessage|ExtDataMessage|ManageListMessage|Message;
 
 export type FCTypeLoginResponse = string; // After successfully logging in, a FCTYPE.LOGIN response is sent whose sMessage is your chat name as a plain string
 export type FCTypeSlaveVShareResponse = number[]; // FCTYPE.SLAVEVSHARE messages contain this payload which I don't understand
@@ -34,6 +36,33 @@ export interface RoomDataMessage {
     src: string;
     topic: string;
     total: number;
+}
+
+// ExtData messages are often prompts to issue AJAX requests and then
+// take the result of those requests and pipe them back through as a
+// specific FCTYPE defined by the ExtDataMessage
+export interface ExtDataMessage {
+    msg: {
+        arg1: number;
+        arg2: number;
+        from: number;
+        len: number;
+        to: number;
+        type: FCTYPE;
+    };
+    msglen: number;
+    opts: number;
+    respkey: number;
+    serv: number;
+    type: FCTYPE;
+}
+
+export interface ManageListMessage {
+    count: number;
+    op: number;
+    owner: number;
+    rdata: any[] | FCTypeTagsResponse; // If it's an array, the first element of this array is a schema for the data that follows
+    channel: any;
 }
 
 export interface BaseMessage {
