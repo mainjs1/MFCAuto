@@ -195,8 +195,6 @@ export class Client implements EventEmitter {
                 if (packet.nArg2 > 0 && packet.sMessage && (packet.sMessage as ManageListMessage).rdata) {
                     let rdata: any = this._processListData((packet.sMessage as ManageListMessage).rdata);
                     let nType: FCL = packet.nArg2;
-                    let nListArg = 0;
-                    let metricType: FCTYPE = 0;
 
                     let arr: any[] = rdata;
                     switch (nType as FCL) {
@@ -229,12 +227,12 @@ export class Client implements EventEmitter {
                             break;
                         case FCL.IGNORES:
                             // Fake the previous signal of the start of a ignore list dump
-                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDFRIEND, 0, arr.length, 0, undefined));
+                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDIGNORE, 0, arr.length, 0, undefined));
                             arr.forEach((user: Message) => {
-                                this._packetReceived(new Packet(FCTYPE.ADDFRIEND, packet.nFrom, packet.nTo, user.uid, packet.nArg2, 0, user));
+                                this._packetReceived(new Packet(FCTYPE.ADDIGNORE, packet.nFrom, packet.nTo, user.uid, packet.nArg2, 0, user));
                             });
                             // Fake the previous signal of the end of a ignore list dump
-                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDFRIEND, arr.length, arr.length, 0, undefined));
+                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDIGNORE, arr.length, arr.length, 0, undefined));
                             break;
                         case FCL.TAGS:
                             // @TODO - Could fake Tags metrics here, but I wasn't ever using it and it's unlikely anyone else was either
@@ -242,11 +240,11 @@ export class Client implements EventEmitter {
                                 // Fake a tags packet
                                 this._packetReceived(new Packet(FCTYPE.TAGS, packet.nFrom, packet.nTo, packet.nArg1, packet.nArg2, packet.sPayload, rdata));
                             } else {
-                                logWithLevel(LogLevel.DEBUG, `Client._packetReceived tags list that was an array?: ${JSON.stringify(rdata)}`);
+                                logWithLevel(LogLevel.DEBUG, `[CLIENT] _packetReceived tags list that was an array?: ${JSON.stringify(rdata)}`);
                             }
                             break;
                         default:
-                            logWithLevel(LogLevel.DEBUG, `Client._packetReceived unhandled list type on MANAGELIST packet: ${nType}`);
+                            logWithLevel(LogLevel.DEBUG, `[CLIENT] _packetReceived unhandled list type on MANAGELIST packet: ${nType}`);
                     }
                 }
                 break;
@@ -357,7 +355,7 @@ export class Client implements EventEmitter {
                 url += `${name}=${(extData as any)[name]}&`;
             });
 
-            logWithLevel(LogLevel.DEBUG, `Client._handleExtData: ${JSON.stringify(extData)} - '${url}'`);
+            logWithLevel(LogLevel.DEBUG, `[CLIENT] _handleExtData: ${JSON.stringify(extData)} - '${url}'`);
             http.get(url, (res: any) => {
                 let contents = "";
                 res.on("data", (chunk: string) => {
@@ -365,15 +363,15 @@ export class Client implements EventEmitter {
                 });
                 res.on("end", () => {
                     try {
-                        logWithLevel(LogLevel.DEBUG, `Client._handleExtData response: ${JSON.stringify(extData)} - '${url}'\n\t${contents}`);
+                        logWithLevel(LogLevel.DEBUG, `[CLIENT] _handleExtData response: ${JSON.stringify(extData)} - '${url}'\n\t${contents.slice(0, 80)}...`);
                         let p = new Packet(extData.msg.type, extData.msg.from, extData.msg.to, extData.msg.arg1, extData.msg.arg2, extData.msglen, JSON.parse(contents));
                         this._packetReceived(p);
                     } catch (e) {
-                        logWithLevel(LogLevel.DEBUG, `Client._handleExtData invalid JSON: ${JSON.stringify(extData)} - '${url}'\n\t${contents}`);
+                        logWithLevel(LogLevel.DEBUG, `[CLIENT] _handleExtData invalid JSON: ${JSON.stringify(extData)} - '${url}'\n\t${contents.slice(0, 80)}...`);
                     }
                 });
             }).on("error", (e: any) => {
-                logWithLevel(LogLevel.DEBUG, `Client._handleExtData error: ${e} - ${JSON.stringify(extData)} - '${url}'`);
+                logWithLevel(LogLevel.DEBUG, `[CLIENT] _handleExtData error: ${e} - ${JSON.stringify(extData)} - '${url}'`);
             });
 
         }
@@ -395,7 +393,7 @@ export class Client implements EventEmitter {
                                 schemaMap.set(schemaMapIndex++, [key, prop2]);
                             });
                         }else {
-                            logWithLevel(LogLevel.DEBUG, `Client._packetReceived. N-level deep schemas? ${JSON.stringify(schema)}`);
+                            logWithLevel(LogLevel.DEBUG, `[CLIENT] _packetReceived. N-level deep schemas? ${JSON.stringify(schema)}`);
                         }
                     });
                 } else {
@@ -404,7 +402,6 @@ export class Client implements EventEmitter {
             });
             rdata.forEach((record: Array<string | number>) => {
                 // Now apply the schema
-                let fakeSessionState: Packet;
                 let msg: any = {};
                 for (let i = 0; i < record.length; i++) {
                     if (schemaMap.has(i)) {
@@ -417,10 +414,10 @@ export class Client implements EventEmitter {
                             }
                             msg[path[0]][path[1]] = record[i];
                         } else {
-                            logWithLevel(LogLevel.DEBUG, `Client._packetReceived. N-level deep schemas? ${JSON.stringify(schema)}`);
+                            logWithLevel(LogLevel.DEBUG, `[CLIENT] _packetReceived. N-level deep schemas? ${JSON.stringify(schema)}`);
                         }
                     } else {
-                        logWithLevel(LogLevel.DEBUG, `Client._packetReceived. Not enough elements in schema\n\tSchema: ${JSON.stringify(schema)}\n\tData: ${JSON.stringify(record)}`);
+                        logWithLevel(LogLevel.DEBUG, `[CLIENT] _packetReceived. Not enough elements in schema\n\tSchema: ${JSON.stringify(schema)}\n\tData: ${JSON.stringify(record)}`);
                     }
                 }
 
@@ -528,7 +525,7 @@ export class Client implements EventEmitter {
                     content = content.substr(startIndex, endIndex - startIndex);
 
                     // Then massage the function somewhat and prepend some prerequisites
-                    content = "var document = {cookie: '', domain: 'myfreecams.com'};var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;function bind(that,f){return f.bind(that);}" + content;
+                    content = "var document = {cookie: '', domain: 'myfreecams.com', location: { protocol: 'http:' }};var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;function bind(that,f){return f.bind(that);}" + content;
                     content = content.replace(/this.createRequestObject\(\)/g, "new XMLHttpRequest()");
                     content = content.replace(/new MfcImageHost\(\)/g, "{host: function(){return '';}}");
                     content = content.replace(/this\.Reset\(\);/g, "this.Reset();this.oReq = new XMLHttpRequest();");
@@ -536,7 +533,7 @@ export class Client implements EventEmitter {
                     return content;
                 }).then((obj) => {
                     this.emoteParser = new obj.ParseEmoteInput();
-                    this.emoteParser.setUrl("http://www.myfreecams.com/mfc2/php/ParseChatStream.php");
+                    this.emoteParser.setUrl("http://api.myfreecams.com/parseEmote");
                     resolve();
                 }).catch((reason) => {
                     reject(reason);

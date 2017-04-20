@@ -12,7 +12,8 @@ function randInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-describe("Startup Scenarios", () => {
+describe("Startup Scenarios", function () {
+    this.timeout(9000);
     let client = null;
     afterEach((done) => {
         client.disconnect().then(() => {
@@ -31,10 +32,12 @@ describe("Startup Scenarios", () => {
     });
     it("should properly handle multiple manual client disconnects", () => {
         assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should be 0 connected clients now");
-        client.disconnect();
-        assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should still be 0 connected clients");
-        client.disconnect();
-        assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should really still be 0 connected clients");
+        client.disconnect(() => {
+            assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should still be 0 connected clients");
+        });
+        client.disconnect(() => {
+            assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should really still be 0 connected clients");
+        });
     });
     it("should be able to connect without logging in", (done) => {
         client = new mfc.Client();
@@ -90,7 +93,7 @@ describe("Startup Scenarios", () => {
 });
 
 describe("Connected Scenarios", function () {
-    this.timeout(7000);
+    this.timeout(9000);
     let client = new mfc.Client();
     let queen;
     before((done) => {
@@ -156,7 +159,7 @@ describe("Connected Scenarios", function () {
                 // assert.strictEqual(aMsg2[1].txt, ":mhappy");
                 // assert.strictEqual(aMsg2[1].url, "http://www.myfreecams.com/chat_images/u/2c/2c9d2da6.gif");
                 // assert.strictEqual(aMsg2[1].code, "#~ue,2c9d2da6.gif,mhappy~#");
-                assert.strictEqual(parsedString, "I am happy #~ue,2c9d2da6.gif,mhappy~#", "Encoding failed or returned an unexpected format");
+                assert.strictEqual(parsedString, "I am happy #~ue,2c9d2da6.gif,mhappy~#", `Encoding failed or returned an unexpected format: ${parsedString}`);
 
                 //And we should be able to decode that string back too
                 let packet = new mfc.Packet();
