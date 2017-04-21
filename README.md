@@ -14,10 +14,10 @@ Here are some examples of how you might use MFCAuto.js.  [More complete API docu
 
 ```bash
 # Install a released version using the release tag (recommended)
-$ npm install ZombieAlex/MFCAuto#v3.4.2
+$ npm install ZombieAlex/MFCAuto#v3.4.4
 
-# Install a specific commit hash (this is the v3.4.2 commit hash)
-$ npm install ZombieAlex/MFCAuto#debb14e24d66959ae6a801223236d72e21f72e6b
+# Install a specific commit hash (this is the v3.4.4 commit hash)
+$ npm install ZombieAlex/MFCAuto#197902bfa4740c2657431530ad1dbe1303a4f2ac
 
 # Install the latest MFCAuto from the tip of master
 $ npm install ZombieAlex/MFCAuto
