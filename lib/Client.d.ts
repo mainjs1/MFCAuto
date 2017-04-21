@@ -9,6 +9,8 @@ export declare class Client implements EventEmitter {
     uid: number;
     private net;
     private choseToLogIn;
+    private completedFriends;
+    private completedModels;
     private serverConfig;
     private streamBuffer;
     private streamBufferPosition;
@@ -60,7 +62,6 @@ export declare class Client implements EventEmitter {
     connect(doLogin?: boolean): Promise<{}>;
     private disconnected();
     login(username?: string, password?: string): void;
-    private hookModelsLoaded();
     connectAndWaitForModels(): Promise<{}>;
     disconnect(): Promise<{}>;
 }

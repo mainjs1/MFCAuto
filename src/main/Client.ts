@@ -22,6 +22,8 @@ export class Client implements EventEmitter {
 
     private net: any;
     private choseToLogIn: boolean = false;
+    private completedFriends: boolean = true;
+    private completedModels: boolean = false;
     private serverConfig: ServerConfig;
     private streamBuffer: Buffer;
     private streamBufferPosition: number;
@@ -189,6 +191,31 @@ export class Client implements EventEmitter {
             case FCTYPE.EXTDATA:
                 if (packet.nTo === this.sessionId && packet.nArg2 === FCWOPT.REDIS_JSON) {
                     this._handleExtData(packet.sMessage as ExtDataMessage);
+                }
+                break;
+            case FCTYPE.METRICS:
+                // For METRICS, nTO is an FCTYPE indicating the type of data that's
+                // starting or ending, nArg1 is the count of data received so far, and nArg2
+                // is the total count of data, so when nArg1 === nArg2, we're done for that data
+                if (!(this.completedFriends && this.completedModels)) {
+                    switch (packet.nTo as FCTYPE) {
+                        case FCTYPE.ADDFRIEND:
+                            if (packet.nArg1 !== packet.nArg2) {
+                                this.completedFriends = false;
+                            }
+                            break;
+                        case FCTYPE.SESSIONSTATE:
+                            if (packet.nArg1 === packet.nArg2) {
+                                this.completedModels = true;
+                            }
+                            if (this.completedFriends && this.completedModels) {
+                                logWithLevel(LogLevel.DEBUG, `[CLIENT] emitting: CLIENT_MODELSLOADED`);
+                                this.emit("CLIENT_MODELSLOADED");
+                            }
+                            break;
+                        default:
+                            break;
+                    }
                 }
                 break;
             case FCTYPE.MANAGELIST:
@@ -384,6 +411,9 @@ export class Client implements EventEmitter {
             let schema: any[] = rdata.shift();
             let schemaMap: Map<number, string[]> = new Map() as Map<number, string[]>;
             let schemaMapIndex = 0;
+
+            logWithLevel(LogLevel.DEBUG, `[CLIENT] _processListData, processing schema: ${JSON.stringify(schema)}`);
+
             // Build a map of array index -> property path from the schema
             schema.forEach((prop) => {
                 if (typeof prop === "object") {
@@ -393,7 +423,7 @@ export class Client implements EventEmitter {
                                 schemaMap.set(schemaMapIndex++, [key, prop2]);
                             });
                         }else {
-                            logWithLevel(LogLevel.DEBUG, `[CLIENT] _packetReceived. N-level deep schemas? ${JSON.stringify(schema)}`);
+                            logWithLevel(LogLevel.DEBUG, `[CLIENT] _processListData. N-level deep schemas? ${JSON.stringify(schema)}`);
                         }
                     });
                 } else {
@@ -401,27 +431,31 @@ export class Client implements EventEmitter {
                 }
             });
             rdata.forEach((record: Array<string | number>) => {
-                // Now apply the schema
-                let msg: any = {};
-                for (let i = 0; i < record.length; i++) {
-                    if (schemaMap.has(i)) {
-                        let path = schemaMap.get(i);
-                        if (path.length === 1) {
-                            msg[path[0]] = record[i];
-                        } else if (path.length === 2) {
-                            if (msg[path[0]] === undefined) {
-                                msg[path[0]] = {};
+                if (Array.isArray(record)){
+                    // Now apply the schema
+                    let msg: any = {};
+                    for (let i = 0; i < record.length; i++) {
+                        if (schemaMap.has(i)) {
+                            let path = schemaMap.get(i);
+                            if (path.length === 1) {
+                                msg[path[0]] = record[i];
+                            } else if (path.length === 2) {
+                                if (msg[path[0]] === undefined) {
+                                    msg[path[0]] = {};
+                                }
+                                msg[path[0]][path[1]] = record[i];
+                            } else {
+                                logWithLevel(LogLevel.DEBUG, `[CLIENT] _processListData. N-level deep schemas? ${JSON.stringify(schema)}`);
                             }
-                            msg[path[0]][path[1]] = record[i];
                         } else {
-                            logWithLevel(LogLevel.DEBUG, `[CLIENT] _packetReceived. N-level deep schemas? ${JSON.stringify(schema)}`);
+                            logWithLevel(LogLevel.DEBUG, `[CLIENT] _processListData. Not enough elements in schema\n\tSchema: ${JSON.stringify(schema)}\n\tData: ${JSON.stringify(record)}`);
                         }
-                    } else {
-                        logWithLevel(LogLevel.DEBUG, `[CLIENT] _packetReceived. Not enough elements in schema\n\tSchema: ${JSON.stringify(schema)}\n\tData: ${JSON.stringify(record)}`);
                     }
-                }
 
-                result.push(msg);
+                    result.push(msg);
+                } else {
+                    result.push(record);
+                }
             });
             return result;
         } else {
@@ -720,8 +754,6 @@ export class Client implements EventEmitter {
                 let chatServer = this.serverConfig.chat_servers[Math.floor(Math.random() * this.serverConfig.chat_servers.length)];
                 logWithLevel(LogLevel.INFO, "Connecting to MyFreeCams chat server " + chatServer + "...");
 
-                this.hookModelsLoaded();
-
                 this.client = this.net.connect(8100, chatServer + ".myfreecams.com", () => { // 'connect' listener
                     this.client.on("data", (data: any) => {
                         this._readData(data);
@@ -825,43 +857,6 @@ export class Client implements EventEmitter {
             this.password = password;
         }
         this.TxCmd(FCTYPE.LOGIN, 0, 20071025, 0, this.username + ":" + this.password);
-    }
-
-    private hookModelsLoaded() {
-        let completedModels = false;
-        let completedFriends = true;
-        function modelListFinished(packet: Packet) {
-            // for METRICS, nTO is an FCTYPE indicating the type of data that's
-            // starting or ending, nArg1 is the count of data received so far, and nArg2
-            // is the total count of data, so when nArg1 === nArg2, we're done
-            // So...
-            // nTo of 2 means these are metrics for friends
-            // nTo of 20 means these are metrics for online models in general
-            // nTo of 64 means these are for tags
-            // nTo of 51 is joinchan
-            if (packet.nTo === 2) {
-                if (packet.nArg1 !== packet.nArg2) {
-                    completedFriends = false;
-                } else {
-                    completedFriends = true;
-                }
-            }
-            if (packet.nTo === 20 && packet.nArg1 === packet.nArg2) {
-                completedModels = true;
-            }
-            if (completedModels && completedFriends) {
-                this.removeListener("METRICS", modelListFinished);
-                logWithLevel(LogLevel.DEBUG, `[CLIENT] emitting: CLIENT_MODELSLOADED`);
-                this.emit("CLIENT_MODELSLOADED");
-            }
-        }
-        if (!this.listeners("METRICS").find((func) => func.toString() === modelListFinished.toString())) {
-            // Only add this listener if the same listener hasn't already been added
-            // this prevents a leak when the servers are down and we're stuck in the connect loop
-            this.on("METRICS", modelListFinished.bind(this));
-        }
-        // @TODO - Check if anything else is needed to wait for 'bookmarked'
-        // models...
     }
 
     // Connects to MFC and logs in, just like this.connect(true),
