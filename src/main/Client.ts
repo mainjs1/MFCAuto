@@ -211,7 +211,7 @@ export class Client implements EventEmitter {
                             // Fake the previous signal of the start of a model list dump
                             this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.SESSIONSTATE, 0, arr.length, 0, undefined));
                             arr.forEach((model: Message) => {
-                                this._packetReceived(new Packet(FCTYPE.SESSIONSTATE, packet.nFrom, packet.nTo, packet.nArg1, model.sid, 0, model));
+                                this._packetReceived(new Packet(FCTYPE.SESSIONSTATE, packet.nFrom, packet.nTo, packet.nArg1, model.uid, 0, model));
                             });
                             // Fake the previous signal of the end of a model list dump
                             this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.SESSIONSTATE, arr.length, arr.length, 0, undefined));
