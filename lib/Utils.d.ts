@@ -10,4 +10,6 @@ export declare enum LogLevel {
 export declare function setLogLevel(level: LogLevel): void;
 export declare function logWithLevel(level: LogLevel, msg: string, fileRoot?: string, consoleFormatter?: (msg: string) => string): void;
 export declare function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: string) => string): void;
+export declare function decodeIfNeeded(str: string): string;
 export declare function applyMixins(derivedCtor: any, baseCtors: any[]): void;
+export declare function httpGet(url: string): Promise<string>;

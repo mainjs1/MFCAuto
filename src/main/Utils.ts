@@ -1,4 +1,5 @@
 import * as assert from "assert";
+import * as http from "http";
 
 export enum LogLevel {
     SILENT,     // Nothing
@@ -61,6 +62,40 @@ export function log(msg: string, fileRoot?: string, consoleFormatter?: (msg: str
     }
 }
 
+// Takes a string, detects if it was URI encoded,
+// and returns the decoded version
+export function decodeIfNeeded(str: string): string {
+    if (typeof str === "string" && str.indexOf("%") !== -1) {
+        try {
+            let decoded = decodeURIComponent(str);
+            if (decoded === str) {
+                // Apparently it wasn't actually encoded
+                // So just return it
+                return str;
+            } else {
+                // If it was fully URI encoded, then re-encoding
+                // the decoded should return the original
+                let encoded = encodeURIComponent(decoded);
+                if (encoded === str) {
+                    // Yep, it was fully encoded
+                    return decoded;
+                } else {
+                    // It wasn't fully encoded, maybe it wasn't
+                    // encoded at all. Be safe and return the
+                    // original
+                    logWithLevel(LogLevel.DEBUG, `[UTILS] decodeIfNeeded detected partially encoded string? '${str}'`);
+                    return str;
+                }
+            }
+        } catch (e) {
+            logWithLevel(LogLevel.DEBUG, `[UTILS] decodeIfNeeded exception decoding '${str}'`);
+            return str;
+        }
+    } else {
+        return str;
+    }
+}
+
 // Think of this as util.inherits, except that it doesn't completely overwrite
 // the prototype of the base object.  It just adds to it.
 export function applyMixins(derivedCtor: any, baseCtors: any[]) {
@@ -68,6 +103,24 @@ export function applyMixins(derivedCtor: any, baseCtors: any[]) {
     baseCtors.forEach(baseCtor => {
         Object.getOwnPropertyNames(baseCtor.prototype).forEach(name => {
             derivedCtor.prototype[name] = baseCtor.prototype[name];
+        });
+    });
+}
+
+// Simple promisified httpGet helper that helps us use
+// async/await and have cleaner code elsewhere
+export function httpGet(url: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        http.get(url, function (res: any) {
+            let contents = "";
+            res.on("data", function (chunk: string) {
+                contents += chunk;
+            });
+            res.on("end", function () {
+                resolve(contents);
+            });
+        }).on("error", function (e: any) {
+            reject(e);
         });
     });
 }

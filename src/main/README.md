@@ -1,8 +1,11 @@
 # MFCAuto API Reference
 ## Client class
+Creates and maintains a TCP socket connection to MFC chat servers similar to the way the Flash client connects and communicates with MFC.
+
+---
 
 ### constructor(username: string = "guest", password: string = "guest")
-Creates a Client instance with the given credentials, or with guest credentials by default.  [See my comment here if you wish to log in with a real account.](https://github.com/ZombieAlex/MFCAuto/blob/master/src/main/Client.ts#L40)
+Creates a Client instance with the given credentials, or with guest credentials by default.  [See my comment here if you wish to log in with a real account.](https://github.com/ZombieAlex/MFCAuto/blob/master/src/main/Client.ts#L42)
 
 You can have multiple Client instances active and connected at once. They will not interfere with each other.
 
@@ -23,7 +26,7 @@ client.connect();
 
 ---
 
-### connectAndWaitForModels(): void
+### connectAndWaitForModels(): Promise
 Connects to MFC, logs in, and returns a Promise that resolves only when details for all online models have been received.
 
 ```javascript
@@ -41,54 +44,35 @@ If the connected socket was the only thing keeping the NodeJS event loop alive, 
 
 ---
 
-### on(event: string, listener: (packet: Packet) => void): void
-Every time MFCAuto receives a complete packet from the server, two events are emitted.  One named "ANY" and another named after the FCTYPE of the received packet.
-
-[See Constants.ts for all possible FCTYPEs.](https://github.com/ZombieAlex/MFCAuto/blob/master/src/main/Constants.ts#L317) There are many, and I won't claim to know what they all mean.
-
-```javascript
-//Log all received packets
-client.on("ANY", (packet) => {
-    console.log(packet.toString());
-});
-
-//Do something with just SESSIONSTATE packets
-client.on("SESSIONSTATE", (packet) => {
-    //Do something here...
-});
-```
-
----
-
 ### TxCmd(nType: FCTYPE, nTo: number = 0, nArg1: number = 0, nArg2: number = 0, sMsg: string = null): void
 Sends a command to the MFC chat server. In practice, I rarely use this directly and have only scratched the surface of what commands are valid.  You probably don't need to use this for anything frankly.  Instead, the following methods are useful wrappers that abstract the common commands.
 
 ---
 
-### joinRoom(id: number): void
-Joins the given model's chat room. This is required to start receiving her room chat. This call can fail if you're banned from the model's room. There is no built-in way to detect such a failures. Trial and error has shown me that you'll receive an FCTYPE.ZBAN packet when you attempt to enter a room you're banned from.  You can set up a separate listener for such a packet and handle the error yourself.
+### joinRoom(id: number): Promise
+Joins the given model's chat room. This is required to start receiving her room chat. This method returns a promise that resolves when you've successfully joined the room and rejects if the join fails. Joins can fail is the specified model doesn't exist, or your region is blocked by the model, or you are individually banned by the model.
 
 ---
 
-### leaveRoom(id: number): void
-Leave the given model's chat room.
+### leaveRoom(id: number): Promise
+Leave the given model's chat room. Returns a promise that resolves immediately.
 
 ---
 
-### sendChat(id: number, msg: string): void
-Sends "msg" to a model's chat room.  Call this only after joining the room.  This message could fail to be sent if you're muted or banned. At present, no easy way to detect failure is provided.
+### sendChat(id: number, msg: string): Promise
+Sends "msg" to a model's chat room.  Call this only after joining the room. This message could fail to be sent if you're muted or banned. At present, no easy way to detect failure is provided. Returns a promise that resolves immediately.
 
 ---
 
-### sendPM(id: number, msg: string): void
-Sends "msg" to a model (or any user by ID) via PM.  This message could fail to be sent. At present, no easy way to detect failure is provided.
+### sendPM(id: number, msg: string): Promise
+Sends "msg" to a model (or any user by ID) via PM.  This message could fail to be sent. At present, no easy way to detect failure is provided. Returns a promise that resolves immediately.
 
 ---
 
 ### queryUser(user: string | number): Promise
 Looks up a user by username or id number and resolves with details for that user, or undefined if the user does not exist on MFC. If the user is a model, this will also have the side effect of updating her MFCAuto state before the promise is resolved.
 
-Because this method supports querying for normal users as well as models, it does not resolve with a Model instance, but rather a [Message](https://github.com/ZombieAlex/MFCAuto/blob/master/src/main/sMessages.ts#L50) instead. If you were querying a model, that message can be converted to her full instance as seen below. If you were querying a member, note that the Message object has a .vs property which will tell that user's current state exactly like a model.bestSession.vs property would.
+Because this method supports querying for normal users as well as models, it does not resolve with a Model instance, but rather a [Message](https://github.com/ZombieAlex/MFCAuto/blob/master/src/main/sMessages.ts#L84) instead. If you were querying a model, that message can be converted to her full instance as seen below. If you were querying a member, note that the Message object has a .vs property which will tell that user's current state exactly like a model.bestSession.vs property would.
 
 A user does not have to be online to be queried.
 
@@ -128,13 +112,35 @@ client.queryUser("MyPremiumMemberFriend").then((msg) => {
 // Potentially useful when your logic is in model state change handlers
 client.queryUser(3111899);
 ```
+---
+
+### EventEmitter methods
+Client is a [NodeJS EventEmitter](https://nodejs.org/api/all.html#events_class_eventemitter). Every time MFCAuto receives a complete packet from the server, two Client events are emitted.  One named "ANY" and another named after the FCTYPE of the received packet.
+
+[See Constants.ts for all possible FCTYPEs.](https://github.com/ZombieAlex/MFCAuto/blob/master/src/main/Constants.ts#L317) There are many, and I won't claim to know what they all mean.
+
+```javascript
+//Log all received packets
+client.on("ANY", (packet) => {
+    console.log(packet.toString());
+});
+
+//Do something with just SESSIONSTATE packets
+client.on("SESSIONSTATE", (packet) => {
+    //Do something here...
+});
+```
+**Where possible, avoid using Client events and use the previous helper methods or Model events instead. The MFC chat protocol can change at any time and break things, sometimes in subtle ways.**
+
 
 ---
 
+
 ## Model class
+Each Model instance represents a single MFC model, along with all her various state.
 
 ### static getModel(id: number): Model
-Retrieves the Model instance matching a specific model ID.  Never create a model instance directly, use this method instead.
+Retrieves the Model instance matching a specific model ID.  Never create a model instance directly via the constructor, use this method instead.
 
 ID should be a valid model ID.  How can you determine a model's ID number?  The [first example here](https://github.com/ZombieAlex/MFCAuto/blob/master/README.md) has one way, using MFCAuto and the USERNAMELOOKUP command.  Another, simpler, way is to open a model's chat room as a "Popup" and look at the URL of that room.  In the URL, there will be a portion that says "broadcaster_id=3111899".  That number is that model's ID.
 
@@ -161,44 +167,6 @@ The Model instance property ".bestSession" is an object that contains all of the
 
 ---
 
-### static on(event: string, listener: (model: Model, before: any, after: any) => void): void
-When any properties on the model's .bestSession object change, an event will be fired which is named after the altered property.  The callback will be given the model instance that fired the event, the value of the property before it changed, and the value of the property after it changed.
-
-All properties of a model start as undefined and will fire at least one change event when MFC first tells us about the model.  For instance, age doesn't change frequently, but adding a listener for age can still be useful if you want to do something for all models of a certain age as soon as they come online.
-
-This static method listens for changes on all models.  See below for a nearly complete list of event names.
-
-```javascript
-//Log a message any time any model goes into a group show
-mfc.Model.on("vs", (model, before, after) => {
-    if (after === mfc.STATE.GroupShow) {
-        console.log(model.nm + " is now in a group show!");
-    }
-    //As a point of understanding, this statement will always be true here
-    assert(model.bestSession.vs === after);
-});
-```
-
----
-
-### on(event: string, listener: (model: Model, before: any, after: any) => void): void
-Invoke the listener when a property changes for just this one model.
-
-```javascript
-//Log whenever AspenRae appears to be running a raffle
-var AspenRae = mfc.Model.getModel(3111899);
-AspenRae.on("topic", (model, before, after) => {
-    if(/raffle/i.test(after)){
-        console.log("AspenRae seems to be running a raffle! '" + after + "'");
-    }
-    //As a point of understanding, this statement will always be true here
-    assert(model.bestSession.topic === after);
-});
-```
-See below for a nearly complete list of event names.
-
----
-
 ## static when(condition: whenFilter, onTrue: whenCallback, onFalseAfterTrue: whenCallback = null): void
 On every change for any model, the given condition callback will be invoked. If condition returns true, the onTrue callback will be invoked with the instance of the model that matched the condition.  When that model stops matching the given condition, the onFalseAfterTrue callback will be invoked, if it was provided.
 
@@ -209,6 +177,8 @@ mfc.Model.when(
     (m) => console.log(`${m.nm} no longer has over 2000 viewers`)
 );
 ```
+
+Static `when` callbacks can be removed via ```mfc.Model.removeWhen```.
 
 ---
 
@@ -222,6 +192,44 @@ AspenRae.when(
     (m) => console.log('AspenRae has logged on!'),
     (m) => console.log('AspenRae has logged off')
 );
+```
+
+Instance `when` callbacks can be removed via ```AspenRae.removeWhen```.
+
+---
+
+### EventEmitter methods
+The Model class itself and all instances are [NodeJS EventEmitters](https://nodejs.org/api/all.html#events_class_eventemitter). When any properties on the model's .bestSession object change, an event will be fired which is named after the altered property.  The callback will be given the model instance that fired the event, the value of the property before it changed, and the value of the property after it changed.
+
+See below for a nearly complete list of event names.
+
+All properties of a model start as undefined and will fire at least one change event when MFC first tells us about the model.  For instance, age doesn't change frequently, but adding a listener for age can still be useful if you want to do something for all models of a certain age as soon as they come online.
+
+This static methods listen for changes on all models:
+
+```javascript
+//Log a message any time any model goes into a group show
+mfc.Model.on("vs", (model, before, after) => {
+    if (after === mfc.STATE.GroupShow) {
+        console.log(model.nm + " is now in a group show!");
+    }
+    //As a point of understanding, this statement will always be true here
+    assert(model.bestSession.vs === after);
+});
+```
+
+And the instance methods listen for changes on one model:
+
+```javascript
+//Log whenever AspenRae appears to be running a raffle
+var AspenRae = mfc.Model.getModel(3111899);
+AspenRae.on("topic", (model, before, after) => {
+    if(/raffle/i.test(after)){
+        console.log("AspenRae seems to be running a raffle! '" + after + "'");
+    }
+    //As a point of understanding, this statement will always be true here
+    assert(model.bestSession.topic === after);
+});
 ```
 
 ---

@@ -10,7 +10,7 @@ import {FCTYPE} from "./Constants";
 // understanding of the MFC communication protocol.
 
 // The AnyMessage union describes all possible sMessage types
-export type AnyMessage = FCTypeLoginResponse|FCTypeSlaveVShareResponse|FCTypeTagsResponse|FCTokenIncResponse|RoomDataMessage|ExtDataMessage|ManageListMessage|Message;
+export type AnyMessage = FCTypeLoginResponse|FCTypeSlaveVShareResponse|FCTypeTagsResponse|FCTokenIncResponse|RoomDataMessage|ExtDataMessage|ManageListMessage|BookmarksMessage|Message;
 
 export type FCTypeLoginResponse = string; // After successfully logging in, a FCTYPE.LOGIN response is sent whose sMessage is your chat name as a plain string
 export type FCTypeSlaveVShareResponse = number[]; // FCTYPE.SLAVEVSHARE messages contain this payload which I don't understand
@@ -65,6 +65,10 @@ export interface ManageListMessage {
     channel: any;
 }
 
+export interface BookmarksMessage {
+    bookmarks: BaseMessage[];
+}
+
 export interface BaseMessage {
     sid: number;    // Session ID
     uid: number;    // User ID
@@ -72,6 +76,7 @@ export interface BaseMessage {
     nm?: string;    // User name for chat
     vs?: number;    // State (hmm, does "VS" stand for "video state"?  Maybe, that might make sense.)
     msg?: string;   // The text of any chat message or PM if this is a CMESG or PMESG FCType
+    [index: string]: any; // Catch all to cover what I don't know and appease the TypeScript compiler in some cases
 }
 
 
@@ -97,6 +102,7 @@ export interface ModelDetailsMessage {
     rc?: number;        // Count of users in this model's room
     topic?: string;     // The current topic of the model's room
     hidecs?: boolean;   // If true, do not show this model's camscore on the model menu
+    [index: string]: any; // Catch all to cover what I don't know and appease the TypeScript compiler in some cases
 }
 
 // General user details. This contains user details common for all users (models
@@ -117,6 +123,7 @@ export interface UserDetailsMessage {
     occupation?: string;    // User provided occupation description (almost always a lie)
     photos?: number;        // A count of the number of photos this user has on their profile.  Really.  No idea why this is here.
     profile?: number;       // An integer that is either 1 if this user has a profile or 0 if not
+    [index: string]: any; // Catch all to cover what I don't know and appease the TypeScript compiler in some cases
 }
 
 // Suspect but have not confirmed that this portion would light up with actual
@@ -128,4 +135,5 @@ export interface SessionDetailsMessage {
     ip?: string;     // As a guest, this is always the string "0.0.0.0"
     rp?: number;     // As a guest, this is always 0
     tk?: number;     // As a guest, this is always 0
+    [index: string]: any; // Catch all to cover what I don't know and appease the TypeScript compiler in some cases
 }

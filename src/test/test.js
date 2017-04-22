@@ -12,6 +12,10 @@ function randInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+process.on("unhandledRejection", (ur) => {
+    console.log(ur);
+});
+
 describe("Startup Scenarios", function () {
     this.timeout(9000);
     let client = null;
@@ -83,24 +87,25 @@ describe("Startup Scenarios", function () {
         });
         client.connect(true);
     });
-    it("should handle TxCmd on a disconnected client gracefully", () => {
-        try {
-            client.joinRoom(3111899);
-        } catch (e) {
-            assert.strictEqual(e.toString(), "Error: Cannot call TxCmd on a disconnected client");
-        }
+    it("should handle TxCmd on a disconnected client gracefully", (done) => {
+        client.joinRoom(3111899)
+            .catch(e => {
+                assert.strictEqual(e.toString(), "Error: Cannot call TxCmd on a disconnected client");
+                done();
+            });
     });
 });
 
 describe("Connected Scenarios", function () {
     this.timeout(9000);
     let client = new mfc.Client();
+    let popularModels;
     let queen;
     before((done) => {
         assert.strictEqual(mfc.Client.connectedClientCount, 0, "Should be 0 connected clients now");
         client.connectAndWaitForModels().then(() => {
             //Find the most popular model in free chat right now
-            let popularModels = mfc.Model.findModels((m) => m.bestSession.vs === 0);
+            popularModels = mfc.Model.findModels((m) => m.bestSession.vs === 0);
             assert.notStrictEqual(popularModels.length, 0, "No models in public chat??? Is MFC down?");
             popularModels.sort((a, b) => a.bestSession.rc - b.bestSession.rc);
             queen = popularModels[popularModels.length - 1];

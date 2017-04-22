@@ -9,7 +9,6 @@ export declare class Client implements EventEmitter {
     uid: number;
     private net;
     private choseToLogIn;
-    private completedFriends;
     private completedModels;
     private serverConfig;
     private streamBuffer;
@@ -45,7 +44,7 @@ export declare class Client implements EventEmitter {
     private _packetReceived(packet);
     private _readPacket();
     private _handleExtData(extData);
-    private _processListData(rdata);
+    processListData(rdata: any): any;
     EncodeRawChat(rawMsg: string): Promise<string>;
     private loadFromMFC(url, massager?);
     private ensureEmoteParserIsLoaded();
@@ -54,10 +53,10 @@ export declare class Client implements EventEmitter {
     TxPacket(packet: Packet): void;
     static toUserId(id: number): number;
     static toRoomId(id: number): number;
-    sendChat(id: number, msg: string): void;
-    sendPM(id: number, msg: string): void;
-    joinRoom(id: number): void;
-    leaveRoom(id: number): void;
+    sendChat(id: number, msg: string): Promise<void>;
+    sendPM(id: number, msg: string): Promise<void>;
+    joinRoom(id: number): Promise<Packet>;
+    leaveRoom(id: number): Promise<void>;
     queryUser(user: string | number): Promise<{}>;
     connect(doLogin?: boolean): Promise<{}>;
     private disconnected();

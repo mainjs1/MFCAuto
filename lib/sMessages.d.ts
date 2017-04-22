@@ -1,5 +1,5 @@
 import { FCTYPE } from "./Constants";
-export declare type AnyMessage = FCTypeLoginResponse | FCTypeSlaveVShareResponse | FCTypeTagsResponse | FCTokenIncResponse | RoomDataMessage | ExtDataMessage | ManageListMessage | Message;
+export declare type AnyMessage = FCTypeLoginResponse | FCTypeSlaveVShareResponse | FCTypeTagsResponse | FCTokenIncResponse | RoomDataMessage | ExtDataMessage | ManageListMessage | BookmarksMessage | Message;
 export declare type FCTypeLoginResponse = string;
 export declare type FCTypeSlaveVShareResponse = number[];
 export interface FCTypeTagsResponse {
@@ -44,6 +44,9 @@ export interface ManageListMessage {
     rdata: any[] | FCTypeTagsResponse;
     channel: any;
 }
+export interface BookmarksMessage {
+    bookmarks: BaseMessage[];
+}
 export interface BaseMessage {
     sid: number;
     uid: number;
@@ -51,6 +54,7 @@ export interface BaseMessage {
     nm?: string;
     vs?: number;
     msg?: string;
+    [index: string]: any;
 }
 export interface Message extends BaseMessage {
     u?: UserDetailsMessage;
@@ -70,6 +74,7 @@ export interface ModelDetailsMessage {
     rc?: number;
     topic?: string;
     hidecs?: boolean;
+    [index: string]: any;
 }
 export interface UserDetailsMessage {
     age?: number;
@@ -87,6 +92,7 @@ export interface UserDetailsMessage {
     occupation?: string;
     photos?: number;
     profile?: number;
+    [index: string]: any;
 }
 export interface SessionDetailsMessage {
     ga2?: string;
@@ -94,4 +100,5 @@ export interface SessionDetailsMessage {
     ip?: string;
     rp?: number;
     tk?: number;
+    [index: string]: any;
 }

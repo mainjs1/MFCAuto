@@ -1,9 +1,7 @@
-import {applyMixins} from "./Utils";
+import {applyMixins, LogLevel, logWithLevel, decodeIfNeeded} from "./Utils";
 import {EventEmitter} from "events";
-import {FCTYPE, STATE} from "./Constants";
-import {FCVIDEO, FCOPT} from "./Constants";
+import {FCTYPE, STATE, FCVIDEO, FCOPT, FCLEVEL} from "./Constants";
 import {Message, BaseMessage, ModelDetailsMessage, UserDetailsMessage, SessionDetailsMessage, FCTypeTagsResponse} from "./sMessages";
-import {Packet} from "./Packet";
 import * as assert from "assert";
 
 // Model represents a single MFC model, or technically any MFC user whether or
@@ -79,13 +77,9 @@ export class Model implements EventEmitter {
     // directly.  Use the Model.getModel() method instead.
     private static knownModels: Map<number, Model> = new Map() as Map<number, Model>;
 
-    // Constructs a new model with the given user id and, optionally, a
-    // SESSIONSTATE or TAGS packet containing the initial model details.
-    constructor(uid: number, packet?: Packet) {
+    // Constructs a new model with the given user id
+    constructor(uid: number) {
         this.uid = uid;
-        if (packet !== undefined) {
-            this.mergePacket(packet);
-        }
     }
 
     // Retrieves a specific model instance by user id from knownModels, creating
@@ -156,73 +150,80 @@ export class Model implements EventEmitter {
         return session;
     }
 
-    // Merges a raw MFC packet into this model's state
+    public mergeTags(newTags: string[]) {
+        if (Array.isArray(newTags)) {
+            let oldTags = this.tags.slice();
+            this.tags = this.tags.concat(newTags);
+            this.emit("tags", this, oldTags, this.tags);
+            Model.emit("tags", this, oldTags, this.tags);
+            this.emit("ANY", this, oldTags, this.tags);
+            Model.emit("ANY", this, oldTags, this.tags);
+            this.processWhens(newTags);
+        }
+    }
+
+    // Merges a raw MFC Message into this model's state
     //
     // Also, there are a few bitmasks that are sent as part of the chat messages.
     // Just like StoreUserHash, we will decode those bitmasks here for convenience
     // as they contain useful information like if a private is true private or
     // if guests or basics are muted or if the model software is being used.
-    public mergePacket(packet: Packet): void {
-        // Find the session being updated by this packet
-        let previousSession = this.bestSession;
-        let currentSessionId: number;
-        if (packet.FCType === FCTYPE.TAGS) {
-            // Special case TAGS packets, because they don't contain a sessionID
-            // So just fake that we're talking about the previously known best session
-            currentSessionId = previousSession.sid;
+    public merge(msg: Message): void {
+        if (!msg) {
+            logWithLevel(LogLevel.DEBUG, `[MODEL] merge received an undefined message ${this.uid}`);
+            return;
         } else {
-            currentSessionId = (packet.sMessage as Message).sid || 0;
+            msg = Object.assign({}, msg);
         }
+
+        // Find the session being updated by this message
+        let previousSession = this.bestSession;
+        let currentSessionId = msg.sid || 0;
         if (!this.knownSessions.has(currentSessionId)) {
             this.knownSessions.set(currentSessionId, { sid: currentSessionId, uid: this.uid, vs: STATE.Offline });
         }
-        let currentSession = this.knownSessions.get(currentSessionId);
+        let currentSession = this.knownSessions.get(currentSessionId) as ModelSessionDetails;
 
         let callbackStack: mergeCallbackPayload[] = [];
 
         // Merge the updates into the correct session
-        switch (packet.FCType) {
-            case FCTYPE.TAGS:
-                let tagPayload: FCTypeTagsResponse = packet.sMessage as FCTypeTagsResponse;
-                assert.notStrictEqual(tagPayload[this.uid], undefined, "This FCTYPE.TAGS messages doesn't appear to be about this model(" + this.uid + "): " + JSON.stringify(tagPayload));
-                callbackStack.push({ prop: "tags", oldstate: this.tags, newstate: (this.tags = this.tags.concat(tagPayload[this.uid])) });
-                // @TODO - Are tags incrementally added in updates or just given all at once in a single dump??  Not sure, for now
-                // we're always adding to any existing tags.  Have to watch if this causes tag duplication or not
-                break;
-            default:
-                // This must be typed as any in order to iterate over its keys in a for-in
-                // It's real type is Message, but since my type definitions may be incomplete
-                // and even if they are complete, MFC may add a new property, we need to
-                // iterate over all the keys.
-                let payload: any = packet.sMessage;
-                assert.notStrictEqual(payload, undefined);
-                assert.ok(payload.lv === undefined || payload.lv === 4, "Merging a non-model? Non-models need some special casing that is not currently implemented.");
-                assert.ok((payload.uid !== undefined && this.uid === payload.uid) || (packet.aboutModel && packet.aboutModel.uid === this.uid), "Merging a packet meant for a different model!: " + packet.toString());
+        assert.notStrictEqual(msg, undefined);
+        assert.ok(msg.lv === undefined || msg.lv === FCLEVEL.MODEL, "Merging a non-model? Non-models need some special casing that is not currently implemented.");
+        assert.ok(msg.uid === undefined || this.uid === msg.uid, "Merging a message meant for a different model!: " + JSON.stringify(msg));
 
-                for (let key in payload) {
-                    // Rip out the sMessage.u|m|s properties and put them on the session at
-                    // the top level.  This allows for listening on simple event
-                    // names like 'rank' or 'camscore'.
-                    if (key === "u" || key === "m" || key === "s") {
-                        for (let key2 in payload[key]) {
-                            if (!payload[key].hasOwnProperty(key2)) {
-                                continue;
-                            }
-                            callbackStack.push({ prop: key2, oldstate: previousSession[key2], newstate: payload[key][key2] });
-                            currentSession[key2] = payload[key][key2];
-                            if (key === "m" && key2 === "flags") {
-                                currentSession.truepvt = payload[key][key2] & FCOPT.TRUEPVT ? 1 : 0;
-                                currentSession.guests_muted = payload[key][key2] & FCOPT.GUESTMUTE ? 1 : 0;
-                                currentSession.basics_muted = payload[key][key2] & FCOPT.BASICMUTE ? 1 : 0;
-                                currentSession.model_sw = payload[key][key2] & FCOPT.MODELSW ? 1 : 0;
-                            }
+        for (let key in msg) {
+            // Rip out the sMessage.u|m|s properties and put them on the session at
+            // the top level.  This allows for listening on simple event
+            // names like 'rank' or 'camscore'.
+            if (key === "u" || key === "m" || key === "s") {
+                let details = msg[key];
+                if (typeof details === "object") {
+                    for (let key2 in details) {
+                        if (!details.hasOwnProperty(key2)) {
+                            continue;
                         }
-                    } else {
-                        callbackStack.push({ prop: key, oldstate: previousSession[key], newstate: payload[key] });
-                        currentSession[key] = payload[key];
+                        if (typeof details[key2] === "string") {
+                            details[key2] = decodeIfNeeded(details[key2]);
+                        }
+                        callbackStack.push({ prop: key2, oldstate: previousSession[key2], newstate: details[key2] });
+                        currentSession[key2] = details[key2];
+                        if (key === "m" && key2 === "flags") {
+                            currentSession.truepvt = details[key2] & FCOPT.TRUEPVT ? 1 : 0;
+                            currentSession.guests_muted = details[key2] & FCOPT.GUESTMUTE ? 1 : 0;
+                            currentSession.basics_muted = details[key2] & FCOPT.BASICMUTE ? 1 : 0;
+                            currentSession.model_sw = details[key2] & FCOPT.MODELSW ? 1 : 0;
+                        }
                     }
+                } else {
+                    assert.strictEqual(typeof details, "object", "Malformed Message? " + JSON.stringify(msg));
                 }
-                break;
+            } else {
+                if (typeof msg[key] === "string") {
+                    msg[key] = decodeIfNeeded(msg[key]);
+                }
+                callbackStack.push({ prop: key, oldstate: previousSession[key], newstate: msg[key] });
+                currentSession[key] = msg[key];
+            }
         }
 
         // If our "best" session has changed to a new session, the above
@@ -240,7 +241,7 @@ export class Model implements EventEmitter {
         // fire our change events.
         //
         // Otherwise, if this isn't the "best" session and one we should use for all-up reporting,
-        // and they're not part of the "last" session (meaning after merging this packet from a real
+        // and the changes are not part of the "last" session (meaning after merging this msg from a real
         // session, if .bestSession is the fake sid===0 session, then this current session was the last
         // online session) then the changes aren't relevant and shouldn't be sent as notifications.
         if (this.bestSessionId === currentSession.sid || (this.bestSessionId === 0 && currentSession.sid !== 0)) {
@@ -264,13 +265,13 @@ export class Model implements EventEmitter {
 
             // Also fire a generic ANY event signifying an generic update. This
             // event has different callback arguments than the other Model events,
-            // it receives this model instance and the packet that changed the
+            // it receives this model instance and the Message that changed the
             // instance.
-            this.emit("ANY", this, packet);
-            Model.emit("ANY", this, packet);
+            this.emit("ANY", this, msg);
+            Model.emit("ANY", this, msg);
 
             // And also process any registered .when callbacks
-            this.processWhens(packet);
+            this.processWhens(msg);
         }
 
         this.purgeOldSessions();
@@ -283,7 +284,8 @@ export class Model implements EventEmitter {
         let sids: Array<number> = Array.from(this.knownSessions.keys());
         let that = this;
         sids.forEach(function (sid) {
-            if (that.knownSessions.get(sid).vs === undefined || that.knownSessions.get(sid).vs === FCVIDEO.OFFLINE) {
+            let session = that.knownSessions.get(sid);
+            if (session && (session.vs === undefined || session.vs === FCVIDEO.OFFLINE)) {
                 that.knownSessions.delete(sid);
             }
         });
@@ -298,12 +300,11 @@ export class Model implements EventEmitter {
             }
         });
 
-        // Merge an empty offline packet into bestSession so that all the registered
+        // Merge an empty offline message into bestSession so that all the registered
         // event handlers for .bestSession property changes will be fired and user
         // scripts will have a chance to know they need to re-join rooms, etc, when
         // the connection is restored.
-        let blank = new Packet(FCTYPE.SESSIONSTATE, 0, 0, 0, 0, 0, { sid: this.bestSessionId, uid: this.uid, vs: FCVIDEO.OFFLINE } as Message);
-        this.mergePacket(blank);
+        this.merge({ sid: this.bestSessionId, uid: this.uid, vs: FCVIDEO.OFFLINE });
     }
 
     // Purge all session state for all models
@@ -336,19 +337,19 @@ export class Model implements EventEmitter {
         return this.whenMap.delete(condition);
     }
 
-    private processWhens(packet?: Packet): void {
+    private processWhens(payload?: Message | string[]): void {
         let processor = (actions: whenMapEntry, condition: whenFilter) => {
             if (condition(this)) {
                 // Only if we weren't previously matching this condition
                 if (!actions.matchedSet.has(this.uid)) {
                     actions.matchedSet.add(this.uid);
-                    actions.onTrue(this, packet);
+                    actions.onTrue(this, payload);
                 }
             } else {
                 // Only if we were previously matching this condition
                 // and we have an onFalseAfterTrue callback
                 if (actions.matchedSet.delete(this.uid) && actions.onFalseAfterTrue) {
-                    actions.onFalseAfterTrue(this, packet);
+                    actions.onFalseAfterTrue(this, payload);
                 }
             }
         };
@@ -363,7 +364,7 @@ export class Model implements EventEmitter {
 
 export type ModelEventCallback = (model: Model, before: number | string | string[] | boolean, after: number | string | string[] | boolean) => void;
 export type whenFilter = (m: Model) => boolean;
-export type whenCallback = (m: Model, p?: Packet) => void;
+export type whenCallback = (m: Model, p?: Message | string[]) => void;
 interface whenMapEntry {
     onTrue: whenCallback;
     onFalseAfterTrue?: whenCallback;

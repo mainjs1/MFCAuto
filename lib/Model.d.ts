@@ -1,7 +1,6 @@
 /// <reference types="node" />
 import { EventEmitter } from "events";
-import { BaseMessage, ModelDetailsMessage, UserDetailsMessage, SessionDetailsMessage } from "./sMessages";
-import { Packet } from "./Packet";
+import { Message, BaseMessage, ModelDetailsMessage, UserDetailsMessage, SessionDetailsMessage } from "./sMessages";
 export declare class Model implements EventEmitter {
     uid: number;
     nm: string;
@@ -35,12 +34,13 @@ export declare class Model implements EventEmitter {
     static eventNames: () => (string | symbol)[];
     static listenerCount: (type: string | symbol) => number;
     private static knownModels;
-    constructor(uid: number, packet?: Packet);
+    constructor(uid: number);
     static getModel(id: any, createIfNecessary?: boolean): Model | undefined;
     static findModels(filter: (model: Model) => boolean): Model[];
     readonly bestSessionId: number;
     readonly bestSession: ModelSessionDetails;
-    mergePacket(packet: Packet): void;
+    mergeTags(newTags: string[]): void;
+    merge(msg: Message): void;
     private purgeOldSessions();
     reset(): void;
     static reset(): void;
@@ -50,12 +50,12 @@ export declare class Model implements EventEmitter {
     private whenMap;
     when(condition: whenFilter, onTrue: whenCallback, onFalseAfterTrue?: whenCallback): void;
     removeWhen(condition: (m: Model) => boolean): boolean;
-    private processWhens(packet?);
+    private processWhens(payload?);
     toString(): string;
 }
 export declare type ModelEventCallback = (model: Model, before: number | string | string[] | boolean, after: number | string | string[] | boolean) => void;
 export declare type whenFilter = (m: Model) => boolean;
-export declare type whenCallback = (m: Model, p?: Packet) => void;
+export declare type whenCallback = (m: Model, p?: Message | string[]) => void;
 export interface ModelSessionDetails extends BaseMessage, ModelDetailsMessage, UserDetailsMessage, SessionDetailsMessage {
     model_sw?: number;
     truepvt?: number;

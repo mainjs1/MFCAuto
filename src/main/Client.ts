@@ -1,11 +1,10 @@
 import { AnyMessage, Message } from "./sMessages";
 import { EventEmitter } from "events";
-import { LogLevel, logWithLevel, applyMixins } from "./Utils";
-import { MAGIC, FCTYPE, FCCHAN, FCWOPT, FCL } from "./Constants";
+import { LogLevel, logWithLevel, httpGet, applyMixins } from "./Utils";
+import { MAGIC, FCTYPE, FCCHAN, FCWOPT, FCL, FCLEVEL } from "./Constants";
 import { Model } from "./Model";
 import { Packet } from "./Packet";
-import { BaseMessage, ExtDataMessage, ManageListMessage } from "./sMessages";
-import * as http from "http";
+import * as msg from "./sMessages";
 import * as assert from "assert";
 
 // Forward definitions for the TypeScript compiler
@@ -22,7 +21,6 @@ export class Client implements EventEmitter {
 
     private net: any;
     private choseToLogIn: boolean = false;
-    private completedFriends: boolean = true;
     private completedModels: boolean = false;
     private serverConfig: ServerConfig;
     private streamBuffer: Buffer;
@@ -141,8 +139,13 @@ export class Client implements EventEmitter {
 
                 // Ok, we're good, merge if there's anything to merge
                 if (packet.sMessage !== undefined) {
-                    let lv = (packet.sMessage as Message).lv;
-                    let uid = (packet.sMessage as Message).uid;
+                    let msg = packet.sMessage as Message;
+                    let lv = msg.lv;
+                    let uid = msg.uid;
+                    let sid = msg.sid;
+                    if (uid === 0 && sid > 0) {
+                        uid = sid;
+                    }
                     if (uid === undefined && packet.aboutModel) {
                         uid = packet.aboutModel.uid;
                     }
@@ -150,129 +153,123 @@ export class Client implements EventEmitter {
                     // Only merge models (when we can tell). Unfortunately not every SESSIONSTATE
                     // packet has a user level property. So this is no worse than we had been doing
                     // before in terms of merging non-models...
-                    if (uid !== undefined && uid !== -1 && (lv === undefined || lv === 4)) {
+                    if (uid !== undefined && uid !== -1 && (lv === undefined || lv === FCLEVEL.MODEL)) {
                         // If we know this is a model, get her instance and create it
                         // if it does not exist.  Otherwise, don't create an instance
                         // for someone that might not be a mdoel.
-                        let possibleModel = Model.getModel(uid, lv === 4);
+                        let possibleModel = Model.getModel(uid, lv === FCLEVEL.MODEL);
                         if (possibleModel !== undefined) {
-                            possibleModel.mergePacket(packet);
+                            possibleModel.merge(msg);
                         }
                     }
                 }
                 break;
             case FCTYPE.TAGS:
-                let tagPayload: any = packet.sMessage;
-                for (let key in tagPayload) {
-                    if (tagPayload.hasOwnProperty(key)) {
-                        let possibleModel = Model.getModel(key);
-                        if (possibleModel !== undefined) {
-                            possibleModel.mergePacket(packet);
+                let tagPayload = packet.sMessage as msg.FCTypeTagsResponse;
+                if (tagPayload) {
+                    for (let key in tagPayload) {
+                        if (tagPayload.hasOwnProperty(key)) {
+                            let possibleModel = Model.getModel(key);
+                            if (possibleModel !== undefined) {
+                                possibleModel.mergeTags(tagPayload[key]);
+                            }
                         }
                     }
                 }
                 break;
             case FCTYPE.BOOKMARKS:
-                // @TODO - @BUGBUG - this can also trigger a model state update...
-                /*
-                    case FCTYPE_BOOKMARKS:
-                    {
-                        var hBookmarks = ParseJSON(decodeURIComponent(sPayload));
-                        if (hBookmarks.bookmarks) {
-                            for (var a = 0; a < hBookmarks.bookmarks.length; a++) {
-                                Bookmarks.hBookmarkedUsers[hBookmarks.bookmarks[a].uid] = true;
-                                if (!g_hUsers[hBookmarks.bookmarks[a].uid]) {
-                                    StoreUserHash(hBookmarks.bookmarks[a], {
-                */
-                //  log(packet.toString());
-                //  assert.fail("@TODO - We're not merging in bookmarks packets yet unfortunately...");
-                //  process.exit(1);
+                let msg = packet.sMessage as msg.BookmarksMessage;
+                if (Array.isArray(msg.bookmarks)) {
+                    msg.bookmarks.forEach((b) => {
+                        let possibleModel = Model.getModel(b.uid);
+                        if (possibleModel !== undefined) {
+                            possibleModel.merge(b);
+                        }
+                    });
+                }
                 break;
             case FCTYPE.EXTDATA:
                 if (packet.nTo === this.sessionId && packet.nArg2 === FCWOPT.REDIS_JSON) {
-                    this._handleExtData(packet.sMessage as ExtDataMessage);
+                    this._handleExtData(packet.sMessage as msg.ExtDataMessage);
                 }
                 break;
             case FCTYPE.METRICS:
                 // For METRICS, nTO is an FCTYPE indicating the type of data that's
                 // starting or ending, nArg1 is the count of data received so far, and nArg2
                 // is the total count of data, so when nArg1 === nArg2, we're done for that data
-                if (!(this.completedFriends && this.completedModels)) {
-                    switch (packet.nTo as FCTYPE) {
-                        case FCTYPE.ADDFRIEND:
-                            if (packet.nArg1 !== packet.nArg2) {
-                                this.completedFriends = false;
-                            }
-                            break;
-                        case FCTYPE.SESSIONSTATE:
-                            if (packet.nArg1 === packet.nArg2) {
-                                this.completedModels = true;
-                            }
-                            if (this.completedFriends && this.completedModels) {
-                                logWithLevel(LogLevel.DEBUG, `[CLIENT] emitting: CLIENT_MODELSLOADED`);
-                                this.emit("CLIENT_MODELSLOADED");
-                            }
-                            break;
-                        default:
-                            break;
-                    }
-                }
+                // Note that after MFC server updates on 2017-04-18, Metrics packets are rarely,
+                // or possibly never, sent
                 break;
             case FCTYPE.MANAGELIST:
-                if (packet.nArg2 > 0 && packet.sMessage && (packet.sMessage as ManageListMessage).rdata) {
-                    let rdata: any = this._processListData((packet.sMessage as ManageListMessage).rdata);
+                if (packet.nArg2 > 0 && packet.sMessage && (packet.sMessage as msg.ManageListMessage).rdata) {
+                    let rdata: any = this.processListData((packet.sMessage as msg.ManageListMessage).rdata);
                     let nType: FCL = packet.nArg2;
 
                     switch (nType as FCL) {
                         case FCL.ROOMMATES:
                             if (Array.isArray(rdata)) {
-                                // Fake the previous signal of the start of a room viewers dump
-                                this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.JOINCHAN, 0, rdata.length, 0, undefined));
                                 rdata.forEach((viewer: Message) => {
-                                    this._packetReceived(new Packet(FCTYPE.JOINCHAN, packet.nFrom, packet.nTo, (packet.sMessage as ManageListMessage).channel, FCCHAN.JOIN, 0, viewer));
+                                    if (viewer) {
+                                        let possibleModel = Model.getModel(viewer.uid, viewer.lv === FCLEVEL.MODEL);
+                                        if (possibleModel !== undefined) {
+                                            possibleModel.merge(viewer);
+                                        }
+                                    }
                                 });
-                                // Fake the previous signal of the end of a room viewers dump
-                                this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.JOINCHAN, rdata.length, rdata.length, 0, undefined));
                             }
                             break;
                         case FCL.CAMS:
                             if (Array.isArray(rdata)) {
-                                // Fake the previous signal of the start of a model list dump
-                                this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.SESSIONSTATE, 0, rdata.length, 0, undefined));
                                 rdata.forEach((model: Message) => {
-                                    this._packetReceived(new Packet(FCTYPE.SESSIONSTATE, packet.nFrom, packet.nTo, packet.nArg1, model.uid, 0, model));
+                                    if (model) {
+                                        let possibleModel = Model.getModel(model.uid, model.lv === FCLEVEL.MODEL);
+                                        if (possibleModel !== undefined) {
+                                            possibleModel.merge(model);
+                                        }
+                                    }
                                 });
-                                // Fake the previous signal of the end of a model list dump
-                                this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.SESSIONSTATE, rdata.length, rdata.length, 0, undefined));
+                                if (!this.completedModels) {
+                                    this.completedModels = true;
+                                    logWithLevel(LogLevel.DEBUG, `[CLIENT] emitting: CLIENT_MODELSLOADED`);
+                                    this.emit("CLIENT_MODELSLOADED");
+                                }
                             }
                             break;
                         case FCL.FRIENDS:
                             if (Array.isArray(rdata)) {
-                                // Fake the previous signal of the start of a friend list dump
-                                this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDFRIEND, 0, rdata.length, 0, undefined));
                                 rdata.forEach((model: Message) => {
-                                    this._packetReceived(new Packet(FCTYPE.ADDFRIEND, packet.nFrom, packet.nTo, model.uid, packet.nArg2, 0, model));
+                                    if (model) {
+                                        let possibleModel = Model.getModel(model.uid, model.lv === FCLEVEL.MODEL);
+                                        if (possibleModel !== undefined) {
+                                            possibleModel.merge(model);
+                                        }
+                                    }
                                 });
-                                // Fake the previous signal of the end of a friend list dump
-                                this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDFRIEND, rdata.length, rdata.length, 0, undefined));
                             }
                             break;
                         case FCL.IGNORES:
                             if (Array.isArray(rdata)) {
-                                // Fake the previous signal of the start of a ignore list dump
-                                this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDIGNORE, 0, rdata.length, 0, undefined));
                                 rdata.forEach((user: Message) => {
-                                    this._packetReceived(new Packet(FCTYPE.ADDIGNORE, packet.nFrom, packet.nTo, user.uid, packet.nArg2, 0, user));
+                                    if (user) {
+                                        let possibleModel = Model.getModel(user.uid, user.lv === FCLEVEL.MODEL);
+                                        if (possibleModel !== undefined) {
+                                            possibleModel.merge(user);
+                                        }
+                                    }
                                 });
-                                // Fake the previous signal of the end of a ignore list dump
-                                this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDIGNORE, rdata.length, rdata.length, 0, undefined));
                             }
                             break;
                         case FCL.TAGS:
-                            // @TODO - Could fake Tags metrics here, but I wasn't ever using it and it's unlikely anyone else was either
-                            if (typeof rdata === "object") {
-                                // Fake a tags packet
-                                this._packetReceived(new Packet(FCTYPE.TAGS, packet.nFrom, packet.nTo, packet.nArg1, packet.nArg2, packet.sPayload, rdata));
+                            let tagPayload2 = rdata as msg.FCTypeTagsResponse;
+                            if (tagPayload2) {
+                                for (let key in tagPayload2) {
+                                    if (tagPayload2.hasOwnProperty(key)) {
+                                        let possibleModel = Model.getModel(key);
+                                        if (possibleModel !== undefined) {
+                                            possibleModel.mergeTags(tagPayload2[key]);
+                                        }
+                                    }
+                                }
                             }
                             break;
                         default:
@@ -380,7 +377,7 @@ export class Client implements EventEmitter {
         }
     }
 
-    private _handleExtData(extData: ExtDataMessage) {
+    private async _handleExtData(extData: msg.ExtDataMessage) {
         if (extData && extData.respkey) {
             let url = "http://www.myfreecams.com/php/FcwExtResp.php?";
             ["respkey", "type", "opts", "serv"].forEach((name) => {
@@ -388,63 +385,56 @@ export class Client implements EventEmitter {
             });
 
             logWithLevel(LogLevel.DEBUG, `[CLIENT] _handleExtData: ${JSON.stringify(extData)} - '${url}'`);
-            http.get(url, (res: any) => {
-                let contents = "";
-                res.on("data", (chunk: string) => {
-                    contents += chunk;
-                });
-                res.on("end", () => {
-                    try {
-                        logWithLevel(LogLevel.DEBUG, `[CLIENT] _handleExtData response: ${JSON.stringify(extData)} - '${url}'\n\t${contents.slice(0, 80)}...`);
-                        let p = new Packet(extData.msg.type, extData.msg.from, extData.msg.to, extData.msg.arg1, extData.msg.arg2, extData.msglen, JSON.parse(contents));
-                        this._packetReceived(p);
-                    } catch (e) {
-                        logWithLevel(LogLevel.DEBUG, `[CLIENT] _handleExtData invalid JSON: ${JSON.stringify(extData)} - '${url}'\n\t${contents.slice(0, 80)}...`);
-                    }
-                });
-            }).on("error", (e: any) => {
-                logWithLevel(LogLevel.DEBUG, `[CLIENT] _handleExtData error: ${e} - ${JSON.stringify(extData)} - '${url}'`);
-            });
-
+            let contents = "";
+            try {
+                contents = await httpGet(url);
+                logWithLevel(LogLevel.DEBUG, `[CLIENT] _handleExtData response: ${JSON.stringify(extData)} - '${url}'\n\t${contents.slice(0, 80)}...`);
+                let p = new Packet(extData.msg.type, extData.msg.from, extData.msg.to, extData.msg.arg1, extData.msg.arg2, extData.msglen, JSON.parse(contents));
+                this._packetReceived(p);
+            } catch (e) {
+                logWithLevel(LogLevel.DEBUG, `[CLIENT] _handleExtData error: ${e} - ${JSON.stringify(extData)} - '${url}'\n\t${contents.slice(0, 80)}...`);
+            }
         }
     }
 
-    private _processListData(rdata: any): any {
+    // Public so that any scripts that want to listen to MANAGELIST packets
+    // won't have to re-implement this logic
+    public processListData(rdata: any): any {
         // Really MFC?  Really??  Ok, commence the insanity...
         if (Array.isArray(rdata) && rdata.length > 0) {
-            let result: Array<BaseMessage> = [];
-            let schema: any[] = rdata.shift();
-            let schemaMap: Map<number, string[]> = new Map() as Map<number, string[]>;
-            let schemaMapIndex = 0;
+            let result: Array<msg.BaseMessage> = [];
+            let schema: any[] = rdata[0];
+            let schemaMap: Array<string | string[]> = [];
 
             logWithLevel(LogLevel.DEBUG, `[CLIENT] _processListData, processing schema: ${JSON.stringify(schema)}`);
 
-            if (schema !== undefined && rdata.length > 0) {
+            if (Array.isArray(schema) && rdata.length > 0) {
                 // Build a map of array index -> property path from the schema
                 schema.forEach((prop) => {
                     if (typeof prop === "object") {
                         Object.keys(prop).forEach((key) => {
                             if (Array.isArray(prop[key])) {
                                 prop[key].forEach((prop2: string) => {
-                                    schemaMap.set(schemaMapIndex++, [key, prop2]);
+                                    schemaMap.push([key, prop2]);
                                 });
                             } else {
                                 logWithLevel(LogLevel.DEBUG, `[CLIENT] _processListData. N-level deep schemas? ${JSON.stringify(schema)}`);
                             }
                         });
                     } else {
-                        schemaMap.set(schemaMapIndex++, [prop]);
+                        schemaMap.push(prop);
                     }
                 });
-                rdata.forEach((record: Array<string | number>) => {
+                logWithLevel(LogLevel.DEBUG, `[CLIENT] _processListData. Calculated schema map: ${JSON.stringify(schemaMap)}`);
+                rdata.slice(1).forEach((record: Array<string | number>) => {
                     if (Array.isArray(record)) {
                         // Now apply the schema
                         let msg: any = {};
                         for (let i = 0; i < record.length; i++) {
-                            if (schemaMap.has(i)) {
-                                let path = schemaMap.get(i);
-                                if (path.length === 1) {
-                                    msg[path[0]] = record[i];
+                            if (schemaMap.length > i) {
+                                let path = schemaMap[i];
+                                if (typeof path === "string") {
+                                    msg[path] = record[i];
                                 } else if (path.length === 2) {
                                     if (msg[path[0]] === undefined) {
                                         msg[path[0]] = {};
@@ -454,7 +444,7 @@ export class Client implements EventEmitter {
                                     logWithLevel(LogLevel.DEBUG, `[CLIENT] _processListData. N-level deep schemas? ${JSON.stringify(schema)}`);
                                 }
                             } else {
-                                logWithLevel(LogLevel.DEBUG, `[CLIENT] _processListData. Not enough elements in schema\n\tSchema: ${JSON.stringify(schema)}\n\tData: ${JSON.stringify(record)}`);
+                                logWithLevel(LogLevel.DEBUG, `[CLIENT] _processListData. Not enough elements in schema\n\tSchema: ${JSON.stringify(schema)}\n\tSchemaMap: ${JSON.stringify(schemaMap)}\n\tData: ${JSON.stringify(record)}`);
                             }
                         }
 
@@ -487,10 +477,6 @@ export class Client implements EventEmitter {
     // directly use TxCmd with the raw string (or possibly the escape(string) but
     // that's easy enough)
     public EncodeRawChat(rawMsg: string): Promise<string> {
-        if (arguments.length !== 1) {
-            throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
-        }
-
         return new Promise((resolve, reject) => {
             // Pre-filters mostly taken from player.html's SendChat method
             if (rawMsg.match(/^\s*$/) || !rawMsg.match(/:/)) {
@@ -514,32 +500,13 @@ export class Client implements EventEmitter {
     // We try to use this sparingly as it opens us up to breaks from site changes.
     // But it is still useful for the more complex or frequently updated parts
     // of MFC.
-    private loadFromMFC(url: string, massager?: (src: string) => string): Promise<any> {
-        if (arguments.length > 2) {
-            throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
+    private async loadFromMFC(url: string, massager?: (src: string) => string): Promise<any> {
+        let load: any = require("load");
+        let contents = await httpGet(url);
+        if (massager !== undefined) {
+            contents = massager(contents);
         }
-        return new Promise((resolve, reject) => {
-            let load: any = require("load");
-            http.get(url, function (res: any) {
-                let contents = "";
-                res.on("data", function (chunk: string) {
-                    contents += chunk;
-                });
-                res.on("end", function () {
-                    try {
-                        if (massager !== undefined) {
-                            contents = massager(contents);
-                        }
-                        let mfcModule = load.compiler(contents);
-                        resolve(mfcModule);
-                    } catch (e) {
-                        reject(e);
-                    }
-                });
-            }).on("error", function (e: any) {
-                reject(e);
-            });
-        });
+        return(load.compiler(contents));
     }
 
     // Loads the emote parsing code from the MFC web site directly, if it's not
@@ -550,59 +517,40 @@ export class Client implements EventEmitter {
     // We're loading this code from the live site instead of re-coding it ourselves
     // here because of the complexity of the code and the fact that it has changed
     // several times in the past.
-    private ensureEmoteParserIsLoaded() {
-        if (arguments.length !== 0) {
-            throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
+    private async ensureEmoteParserIsLoaded(): Promise<void> {
+        if (this.emoteParser === undefined) {
+            let obj = await this.loadFromMFC("http://www.myfreecams.com/_js/mfccore.js", (content) => {
+                // Massager....Yes this is vulnerable to site breaks, but then
+                // so is this entire module.
+
+                // First, pull out only the ParseEmoteInput function
+                let startIndex = content.indexOf("// js_build_core: MfcJs/ParseEmoteInput/ParseEmoteInput.js");
+                let endIndex = content.indexOf("// js_build_core: ", startIndex + 1);
+                assert.ok(startIndex !== -1 && endIndex !== -1 && startIndex < endIndex, "mfccore.js layout has changed, don't know what to do now");
+                content = content.substr(startIndex, endIndex - startIndex);
+
+                // Then massage the function somewhat and prepend some prerequisites
+                content = "var document = {cookie: '', domain: 'myfreecams.com', location: { protocol: 'http:' }};var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;function bind(that,f){return f.bind(that);}" + content;
+                content = content.replace(/this.createRequestObject\(\)/g, "new XMLHttpRequest()");
+                content = content.replace(/new MfcImageHost\(\)/g, "{host: function(){return '';}}");
+                content = content.replace(/this\.Reset\(\);/g, "this.Reset();this.oReq = new XMLHttpRequest();");
+                content = content.replace(/MfcClientRes/g, "undefined");
+                return content;
+            });
+
+            this.emoteParser = new obj.ParseEmoteInput();
+            this.emoteParser.setUrl("http://api.myfreecams.com/parseEmote");
         }
-        return new Promise((resolve, reject) => {
-            if (this.emoteParser !== undefined) {
-                resolve();
-            } else {
-                this.loadFromMFC("http://www.myfreecams.com/_js/mfccore.js", (content) => {
-                    // Massager....Yes this is vulnerable to site breaks, but then
-                    // so is this entire module.
-
-                    // First, pull out only the ParseEmoteInput function
-                    let startIndex = content.indexOf("// js_build_core: MfcJs/ParseEmoteInput/ParseEmoteInput.js");
-                    let endIndex = content.indexOf("// js_build_core: ", startIndex + 1);
-                    assert.ok(startIndex !== -1 && endIndex !== -1 && startIndex < endIndex, "mfccore.js layout has changed, don't know what to do now");
-                    content = content.substr(startIndex, endIndex - startIndex);
-
-                    // Then massage the function somewhat and prepend some prerequisites
-                    content = "var document = {cookie: '', domain: 'myfreecams.com', location: { protocol: 'http:' }};var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;function bind(that,f){return f.bind(that);}" + content;
-                    content = content.replace(/this.createRequestObject\(\)/g, "new XMLHttpRequest()");
-                    content = content.replace(/new MfcImageHost\(\)/g, "{host: function(){return '';}}");
-                    content = content.replace(/this\.Reset\(\);/g, "this.Reset();this.oReq = new XMLHttpRequest();");
-                    content = content.replace(/MfcClientRes/g, "undefined");
-                    return content;
-                }).then((obj) => {
-                    this.emoteParser = new obj.ParseEmoteInput();
-                    this.emoteParser.setUrl("http://api.myfreecams.com/parseEmote");
-                    resolve();
-                }).catch((reason) => {
-                    reject(reason);
-                });
-            }
-        });
     }
 
     // Loads the lastest server information from MFC, if it's not already loaded
-    private ensureServerConfigIsLoaded() {
-        if (arguments.length !== 0) {
-            throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
+    private async ensureServerConfigIsLoaded() {
+        if (this.serverConfig === undefined) {
+            let obj = await this.loadFromMFC(`http://www.myfreecams.com/_js/serverconfig.js?nc=${Math.random()}`, (text) => {
+                return "var serverConfig = " + text;
+            });
+            this.serverConfig = obj.serverConfig;
         }
-        return new Promise((resolve, reject) => {
-            if (this.serverConfig !== undefined) {
-                resolve();
-            } else {
-                this.loadFromMFC(`http://www.myfreecams.com/_js/serverconfig.js?nc=${Math.random()}`, (text) => {
-                    return "var serverConfig = " + text;
-                }).then((obj) => {
-                    this.serverConfig = obj.serverConfig;
-                    resolve();
-                });
-            }
-        });
     }
 
     // Sends a message back to MFC in the expected packet format
@@ -671,11 +619,10 @@ export class Client implements EventEmitter {
     // Also note, this method has no callback currently, and your message
     // may fail to be sent successfully if you are muted or ignored by
     // the model.
-    public sendChat(id: number, msg: string): void {
-        this.EncodeRawChat(msg).then((encodedMsg) => {
-            id = Client.toRoomId(id);
-            this.TxCmd(FCTYPE.CMESG, id, 0, 0, encodedMsg);
-        });
+    public async sendChat(id: number, msg: string) {
+        let encodedMsg = await this.EncodeRawChat(msg);
+        id = Client.toRoomId(id);
+        this.TxCmd(FCTYPE.CMESG, id, 0, 0, encodedMsg);
     }
 
     // Send msg to the given model via PM.
@@ -688,21 +635,68 @@ export class Client implements EventEmitter {
     // Also note, this method has no callback currently, and your message
     // may fail to be sent successfully if you are ignored by the model or
     // do not have PM access (due to being a guest, etc).
-    public sendPM(id: number, msg: string): void {
-        this.EncodeRawChat(msg).then((encodedMsg) => {
-            id = Client.toUserId(id);
-            this.TxCmd(FCTYPE.PMESG, id, 0, 0, encodedMsg);
-        });
+    public async sendPM(id: number, msg: string) {
+        let encodedMsg = await this.EncodeRawChat(msg);
+        id = Client.toUserId(id);
+        this.TxCmd(FCTYPE.PMESG, id, 0, 0, encodedMsg);
     }
 
     // Joins the chat room of the given model
-    public joinRoom(id: number): void {
-        id = Client.toRoomId(id);
-        this.TxCmd(FCTYPE.JOINCHAN, 0, id, FCCHAN.JOIN);
+    public joinRoom(id: number): Promise<Packet> {
+        return new Promise((resolve, reject) => {
+            let roomId = Client.toRoomId(id);
+            let modelId = Client.toUserId(id);
+
+            let resultHandler = (p: Packet) => {
+                if (p.aboutModel && p.aboutModel.uid === modelId) {
+                    this.removeListener("JOINCHAN", resultHandler);
+                    this.removeListener("ZBAN", resultHandler);
+                    this.removeListener("BANCHAN", resultHandler);
+                    this.removeListener("CMESG", resultHandler);
+                    switch (p.FCType) {
+                        case FCTYPE.CMESG:
+                            // Success!
+                            resolve(p);
+                            break;
+                        case FCTYPE.JOINCHAN:
+                            switch (p.nArg2) {
+                                case FCCHAN.JOIN:
+                                    // Also success!
+                                    resolve(p);
+                                    break;
+                                case FCCHAN.PART:
+                                    // Probably a bad model ID
+                                    reject(p);
+                                    break;
+                                default:
+                                    logWithLevel(LogLevel.DEBUG, `[CLIENT] joinRoom received an unexpected JOINCHAN response ${p.toString()}`);
+                                    break;
+                            }
+                            break;
+                        case FCTYPE.ZBAN:
+                        case FCTYPE.BANCHAN:
+                            reject(p);
+                            break;
+                        default:
+                            logWithLevel(LogLevel.DEBUG, `[CLIENT] joinRoom received the impossible`);
+                            reject(p);
+                            break;
+                    }
+                }
+            };
+
+            // Listen for possible responses
+            this.addListener("JOINCHAN", resultHandler);
+            this.addListener("ZBAN", resultHandler);
+            this.addListener("BANCHAN", resultHandler);
+            this.addListener("CMESG", resultHandler);
+
+            this.TxCmd(FCTYPE.JOINCHAN, 0, roomId, FCCHAN.JOIN);
+        });
     }
 
     // Leaves the chat room of the given model
-    public leaveRoom(id: number): void {
+    public async leaveRoom(id: number) {
         id = Client.toRoomId(id);
         this.TxCmd(FCTYPE.JOINCHAN, 0, id, FCCHAN.PART); // @TODO - Confirm that this works, it's not been tested
     }
@@ -749,9 +743,6 @@ export class Client implements EventEmitter {
     // For instance, MFC servers will respond to a USERNAMELOOKUP request without
     // requiring a login.
     public connect(doLogin: boolean = true) {
-        if (arguments.length > 1) {
-            throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
-        }
         logWithLevel(LogLevel.DEBUG, `[CLIENT] connect(${doLogin})`);
         this.choseToLogIn = doLogin;
         return new Promise((resolve, reject) => {
@@ -815,6 +806,7 @@ export class Client implements EventEmitter {
     private disconnected() {
         logWithLevel(LogLevel.DEBUG, `[CLIENT] disconnected()`);
         this.currentlyConnected = false;
+        this.completedModels = false;
         clearInterval(this.keepAlive);
         if (Client.connectedClientCount > 0) {
             Client.connectedClientCount--;
@@ -877,9 +869,6 @@ export class Client implements EventEmitter {
     // If you're logged in as a user with friended models, this will
     // also wait until your friends list is completely loaded.
     public connectAndWaitForModels() {
-        if (arguments.length !== 0) {
-            throw new Error("You may be using a deprecated version of this function. It has been converted to return a promise rather than taking a callback.");
-        }
         return new Promise((resolve, reject) => {
             this.once("CLIENT_MODELSLOADED", resolve);
             this.connect(true);

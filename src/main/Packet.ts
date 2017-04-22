@@ -1,7 +1,7 @@
 import {AnyMessage, RoomDataMessage, Message, FCTokenIncResponse} from "./sMessages";
 import {Client} from "./Client";
 import {FCTYPE} from "./Constants";
-import {logWithLevel, LogLevel} from "./Utils";
+import {logWithLevel, LogLevel, decodeIfNeeded} from "./Utils";
 import {Model} from "./Model";
 
 // Forward definitions for the TypeScript compiler
@@ -146,6 +146,7 @@ export class Packet {
             if (this.FCType === FCTYPE.CMESG || this.FCType === FCTYPE.PMESG || this.FCType === FCTYPE.TOKENINC) {
                 let obj: Message = this.sMessage as Message;
                 if (obj && obj.msg) {
+                    obj.msg = decodeIfNeeded(obj.msg);
                     this._pMessage = this._parseEmotes(obj.msg);
                 }
             }
