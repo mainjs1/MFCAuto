@@ -59,6 +59,7 @@ export class Packet {
                 case FCTYPE.GUESTCOUNT:
                 case FCTYPE.TOKENINC:
                 case FCTYPE.CMESG:
+                case FCTYPE.BANCHAN:
                     id = this.nTo;
                     break;
                 case FCTYPE.ROOMDATA:

@@ -223,51 +223,56 @@ export class Client implements EventEmitter {
                     let rdata: any = this._processListData((packet.sMessage as ManageListMessage).rdata);
                     let nType: FCL = packet.nArg2;
 
-                    let arr: any[] = rdata;
                     switch (nType as FCL) {
                         case FCL.ROOMMATES:
-                            // Fake the previous signal of the start of a room viewers dump
-                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.JOINCHAN, 0, arr.length, 0, undefined));
-                            arr.forEach((viewer: Message) => {
-                                this._packetReceived(new Packet(FCTYPE.JOINCHAN, packet.nFrom, packet.nTo, (packet.sMessage as ManageListMessage).channel, packet.nArg2, 0, viewer));
-                            });
-                            // Fake the previous signal of the end of a room viewers dump
-                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.JOINCHAN, arr.length, arr.length, 0, undefined));
+                            if (Array.isArray(rdata)) {
+                                // Fake the previous signal of the start of a room viewers dump
+                                this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.JOINCHAN, 0, rdata.length, 0, undefined));
+                                rdata.forEach((viewer: Message) => {
+                                    this._packetReceived(new Packet(FCTYPE.JOINCHAN, packet.nFrom, packet.nTo, (packet.sMessage as ManageListMessage).channel, FCCHAN.JOIN, 0, viewer));
+                                });
+                                // Fake the previous signal of the end of a room viewers dump
+                                this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.JOINCHAN, rdata.length, rdata.length, 0, undefined));
+                            }
                             break;
                         case FCL.CAMS:
-                            // Fake the previous signal of the start of a model list dump
-                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.SESSIONSTATE, 0, arr.length, 0, undefined));
-                            arr.forEach((model: Message) => {
-                                this._packetReceived(new Packet(FCTYPE.SESSIONSTATE, packet.nFrom, packet.nTo, packet.nArg1, model.uid, 0, model));
-                            });
-                            // Fake the previous signal of the end of a model list dump
-                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.SESSIONSTATE, arr.length, arr.length, 0, undefined));
+                            if (Array.isArray(rdata)) {
+                                // Fake the previous signal of the start of a model list dump
+                                this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.SESSIONSTATE, 0, rdata.length, 0, undefined));
+                                rdata.forEach((model: Message) => {
+                                    this._packetReceived(new Packet(FCTYPE.SESSIONSTATE, packet.nFrom, packet.nTo, packet.nArg1, model.uid, 0, model));
+                                });
+                                // Fake the previous signal of the end of a model list dump
+                                this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.SESSIONSTATE, rdata.length, rdata.length, 0, undefined));
+                            }
                             break;
                         case FCL.FRIENDS:
-                            // Fake the previous signal of the start of a friend list dump
-                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDFRIEND, 0, arr.length, 0, undefined));
-                            arr.forEach((model: Message) => {
-                                this._packetReceived(new Packet(FCTYPE.ADDFRIEND, packet.nFrom, packet.nTo, model.uid, packet.nArg2, 0, model));
-                            });
-                            // Fake the previous signal of the end of a friend list dump
-                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDFRIEND, arr.length, arr.length, 0, undefined));
+                            if (Array.isArray(rdata)) {
+                                // Fake the previous signal of the start of a friend list dump
+                                this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDFRIEND, 0, rdata.length, 0, undefined));
+                                rdata.forEach((model: Message) => {
+                                    this._packetReceived(new Packet(FCTYPE.ADDFRIEND, packet.nFrom, packet.nTo, model.uid, packet.nArg2, 0, model));
+                                });
+                                // Fake the previous signal of the end of a friend list dump
+                                this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDFRIEND, rdata.length, rdata.length, 0, undefined));
+                            }
                             break;
                         case FCL.IGNORES:
-                            // Fake the previous signal of the start of a ignore list dump
-                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDIGNORE, 0, arr.length, 0, undefined));
-                            arr.forEach((user: Message) => {
-                                this._packetReceived(new Packet(FCTYPE.ADDIGNORE, packet.nFrom, packet.nTo, user.uid, packet.nArg2, 0, user));
-                            });
-                            // Fake the previous signal of the end of a ignore list dump
-                            this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDIGNORE, arr.length, arr.length, 0, undefined));
+                            if (Array.isArray(rdata)) {
+                                // Fake the previous signal of the start of a ignore list dump
+                                this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDIGNORE, 0, rdata.length, 0, undefined));
+                                rdata.forEach((user: Message) => {
+                                    this._packetReceived(new Packet(FCTYPE.ADDIGNORE, packet.nFrom, packet.nTo, user.uid, packet.nArg2, 0, user));
+                                });
+                                // Fake the previous signal of the end of a ignore list dump
+                                this._packetReceived(new Packet(FCTYPE.METRICS, packet.nFrom, FCTYPE.ADDIGNORE, rdata.length, rdata.length, 0, undefined));
+                            }
                             break;
                         case FCL.TAGS:
                             // @TODO - Could fake Tags metrics here, but I wasn't ever using it and it's unlikely anyone else was either
-                            if (!Array.isArray(rdata)) {
+                            if (typeof rdata === "object") {
                                 // Fake a tags packet
                                 this._packetReceived(new Packet(FCTYPE.TAGS, packet.nFrom, packet.nTo, packet.nArg1, packet.nArg2, packet.sPayload, rdata));
-                            } else {
-                                logWithLevel(LogLevel.DEBUG, `[CLIENT] _packetReceived tags list that was an array?: ${JSON.stringify(rdata)}`);
                             }
                             break;
                         default:
@@ -406,7 +411,7 @@ export class Client implements EventEmitter {
 
     private _processListData(rdata: any): any {
         // Really MFC?  Really??  Ok, commence the insanity...
-        if (Array.isArray(rdata)) {
+        if (Array.isArray(rdata) && rdata.length > 0) {
             let result: Array<BaseMessage> = [];
             let schema: any[] = rdata.shift();
             let schemaMap: Map<number, string[]> = new Map() as Map<number, string[]>;
@@ -414,49 +419,54 @@ export class Client implements EventEmitter {
 
             logWithLevel(LogLevel.DEBUG, `[CLIENT] _processListData, processing schema: ${JSON.stringify(schema)}`);
 
-            // Build a map of array index -> property path from the schema
-            schema.forEach((prop) => {
-                if (typeof prop === "object") {
-                    Object.keys(prop).forEach((key) => {
-                        if (Array.isArray(prop[key])) {
-                            prop[key].forEach((prop2: string) => {
-                                schemaMap.set(schemaMapIndex++, [key, prop2]);
-                            });
-                        }else {
-                            logWithLevel(LogLevel.DEBUG, `[CLIENT] _processListData. N-level deep schemas? ${JSON.stringify(schema)}`);
-                        }
-                    });
-                } else {
-                    schemaMap.set(schemaMapIndex++, [prop]);
-                }
-            });
-            rdata.forEach((record: Array<string | number>) => {
-                if (Array.isArray(record)){
-                    // Now apply the schema
-                    let msg: any = {};
-                    for (let i = 0; i < record.length; i++) {
-                        if (schemaMap.has(i)) {
-                            let path = schemaMap.get(i);
-                            if (path.length === 1) {
-                                msg[path[0]] = record[i];
-                            } else if (path.length === 2) {
-                                if (msg[path[0]] === undefined) {
-                                    msg[path[0]] = {};
-                                }
-                                msg[path[0]][path[1]] = record[i];
+            if (schema !== undefined && rdata.length > 0) {
+                // Build a map of array index -> property path from the schema
+                schema.forEach((prop) => {
+                    if (typeof prop === "object") {
+                        Object.keys(prop).forEach((key) => {
+                            if (Array.isArray(prop[key])) {
+                                prop[key].forEach((prop2: string) => {
+                                    schemaMap.set(schemaMapIndex++, [key, prop2]);
+                                });
                             } else {
                                 logWithLevel(LogLevel.DEBUG, `[CLIENT] _processListData. N-level deep schemas? ${JSON.stringify(schema)}`);
                             }
-                        } else {
-                            logWithLevel(LogLevel.DEBUG, `[CLIENT] _processListData. Not enough elements in schema\n\tSchema: ${JSON.stringify(schema)}\n\tData: ${JSON.stringify(record)}`);
-                        }
+                        });
+                    } else {
+                        schemaMap.set(schemaMapIndex++, [prop]);
                     }
+                });
+                rdata.forEach((record: Array<string | number>) => {
+                    if (Array.isArray(record)) {
+                        // Now apply the schema
+                        let msg: any = {};
+                        for (let i = 0; i < record.length; i++) {
+                            if (schemaMap.has(i)) {
+                                let path = schemaMap.get(i);
+                                if (path.length === 1) {
+                                    msg[path[0]] = record[i];
+                                } else if (path.length === 2) {
+                                    if (msg[path[0]] === undefined) {
+                                        msg[path[0]] = {};
+                                    }
+                                    msg[path[0]][path[1]] = record[i];
+                                } else {
+                                    logWithLevel(LogLevel.DEBUG, `[CLIENT] _processListData. N-level deep schemas? ${JSON.stringify(schema)}`);
+                                }
+                            } else {
+                                logWithLevel(LogLevel.DEBUG, `[CLIENT] _processListData. Not enough elements in schema\n\tSchema: ${JSON.stringify(schema)}\n\tData: ${JSON.stringify(record)}`);
+                            }
+                        }
 
-                    result.push(msg);
-                } else {
-                    result.push(record);
-                }
-            });
+                        result.push(msg);
+                    } else {
+                        result.push(record);
+                    }
+                });
+            } else {
+                logWithLevel(LogLevel.DEBUG, `[CLIENT] _processListData. Malformed list data? ${JSON.stringify(schema)} - ${JSON.stringify(rdata)}`);
+            }
+
             return result;
         } else {
             return rdata;
