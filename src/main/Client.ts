@@ -775,11 +775,6 @@ export class Client implements EventEmitter {
                     // Connecting without logging in is the rarer case, so make the default to log in
                     if (doLogin) {
                         this.login();
-                        // connectedClientCount is used to track when all clients receiving SESSIONSTATE
-                        // updates have disconnected, and as those are only sent for logged-in clients,
-                        // we shouldn't increment the counter for non-logged-in clients
-                        Client.connectedClientCount++;
-                        logWithLevel(LogLevel.DEBUG, `[CLIENT] connectedClientCount: ${Client.connectedClientCount}`);
                     }
 
                     this.currentlyConnected = true;
@@ -860,6 +855,12 @@ export class Client implements EventEmitter {
     // Logs in to MFC.  This should only be called after Client connect(false);
     // See the comment on Client's constructor for details on the password to use.
     public login(username?: string, password?: string): void {
+        // connectedClientCount is used to track when all clients receiving SESSIONSTATE
+        // updates have disconnected, and as those are only sent for logged-in clients,
+        // we shouldn't increment the counter for non-logged-in clients
+        Client.connectedClientCount++;
+        logWithLevel(LogLevel.DEBUG, `[CLIENT] connectedClientCount: ${Client.connectedClientCount}`);
+
         if (username !== undefined) {
             this.username = username;
         }
