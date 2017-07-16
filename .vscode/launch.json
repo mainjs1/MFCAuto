@@ -24,6 +24,28 @@
             "outDir": "${workspaceRoot}/lib"
         },
         {
+            "name": "WebSocket Tests",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceRoot}/node_modules/mocha/bin/_mocha",
+            "stopOnEntry": false,
+            "args": [
+                "${workspaceRoot}/src/test/testWS.js"
+            ],
+            "cwd": "${workspaceRoot}",
+            "preLaunchTask": null,
+            "runtimeExecutable": null,
+            "runtimeArgs": [
+                "--nolazy"
+            ],
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "externalConsole": false,
+            "sourceMaps": true,
+            "outDir": "${workspaceRoot}/lib"
+        },
+        {
             "name": "Packet Inspector",
             "type": "node",
             "request": "launch",

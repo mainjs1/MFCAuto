@@ -10,9 +10,11 @@ export declare class Client implements EventEmitter {
     private net;
     private choseToLogIn;
     private completedModels;
+    private useWebSockets;
     private serverConfig;
     private streamBuffer;
-    private streamBufferPosition;
+    private streamWebSocketBuffer;
+    private streamPosition;
     private emoteParser;
     private client;
     private keepAlive;
@@ -26,7 +28,7 @@ export declare class Client implements EventEmitter {
     private static initialReconnectSeconds;
     private static maximumReconnectSeconds;
     private static currentReconnectSeconds;
-    constructor(username?: string, password?: string);
+    constructor(username?: string, password?: string, useWebSockets?: boolean);
     addListener: (event: string, listener: ClientEventCallback) => this;
     on: (event: string, listener: ClientEventCallback) => this;
     once: (event: string, listener: ClientEventCallback) => this;
@@ -41,8 +43,10 @@ export declare class Client implements EventEmitter {
     eventNames: () => string[];
     listenerCount: (type: string) => number;
     private _readData(buf);
+    private _readWebSocketData(buf);
     private _packetReceived(packet);
     private _readPacket();
+    private _readWebSocketPacket();
     private _handleExtData(extData);
     processListData(rdata: any): any;
     EncodeRawChat(rawMsg: string): Promise<string>;

@@ -1,11 +1,11 @@
-import { AnyMessage, Message } from "./sMessages";
 import { EventEmitter } from "events";
 import { LogLevel, logWithLevel, httpGet, applyMixins } from "./Utils";
 import { MAGIC, FCTYPE, FCCHAN, FCWOPT, FCL, FCLEVEL } from "./Constants";
 import { Model } from "./Model";
 import { Packet } from "./Packet";
-import * as msg from "./sMessages";
+import * as messages from "./sMessages";
 import * as assert from "assert";
+import * as WebSocket from "ws";
 
 // Forward definitions for the TypeScript compiler
 declare var escape: (text: string) => string;
@@ -22,9 +22,11 @@ export class Client implements EventEmitter {
     private net: any;
     private choseToLogIn: boolean = false;
     private completedModels: boolean = false;
+    private useWebSockets: boolean = false;
     private serverConfig: ServerConfig;
     private streamBuffer: Buffer;
-    private streamBufferPosition: number;
+    private streamWebSocketBuffer: string;
+    private streamPosition: number;
     private emoteParser: EmoteParser;
     private client: any;
     private keepAlive: number;
@@ -50,13 +52,15 @@ export class Client implements EventEmitter {
     // cookie named "passcode".  Select it and copy the value listed as "Content".
     // It will be a long string of lower case letters that looks like gibberish.
     // *That* is the password to use here.
-    constructor(username: string = "guest", password: string = "guest") {
+    constructor(username: string = "guest", password: string = "guest", useWebSockets: boolean = false) {
         this.net = require("net");
         this.username = username;
         this.password = password;
+        this.useWebSockets = useWebSockets;
         this.sessionId = 0;
         this.streamBuffer = new Buffer(0);
-        this.streamBufferPosition = 0;
+        this.streamWebSocketBuffer = "";
+        this.streamPosition = 0;
         this.manualDisconnect = false;
         this.loginPacketReceived = false;
         this.currentlyConnected = false;
@@ -87,6 +91,14 @@ export class Client implements EventEmitter {
 
         // The new buffer might contain a complete packet, try to read to find out...
         this._readPacket();
+    }
+
+    // Same as the above function, but for websocket data
+    private _readWebSocketData(buf: string): void {
+        this.streamWebSocketBuffer += buf;
+
+        // The new buffer might contain a complete packet, try to read to find out...
+        this._readWebSocketPacket();
     }
 
     // Called with a single, complete, packet.  This function processes the packet,
@@ -139,7 +151,7 @@ export class Client implements EventEmitter {
 
                 // Ok, we're good, merge if there's anything to merge
                 if (packet.sMessage !== undefined) {
-                    let msg = packet.sMessage as Message;
+                    let msg = packet.sMessage as messages.Message;
                     let lv = msg.lv;
                     let uid = msg.uid;
                     let sid = msg.sid;
@@ -165,7 +177,7 @@ export class Client implements EventEmitter {
                 }
                 break;
             case FCTYPE.TAGS:
-                let tagPayload = packet.sMessage as msg.FCTypeTagsResponse;
+                let tagPayload = packet.sMessage as messages.FCTypeTagsResponse;
                 if (tagPayload) {
                     for (let key in tagPayload) {
                         if (tagPayload.hasOwnProperty(key)) {
@@ -178,7 +190,7 @@ export class Client implements EventEmitter {
                 }
                 break;
             case FCTYPE.BOOKMARKS:
-                let msg = packet.sMessage as msg.BookmarksMessage;
+                let msg = packet.sMessage as messages.BookmarksMessage;
                 if (Array.isArray(msg.bookmarks)) {
                     msg.bookmarks.forEach((b) => {
                         let possibleModel = Model.getModel(b.uid);
@@ -190,7 +202,7 @@ export class Client implements EventEmitter {
                 break;
             case FCTYPE.EXTDATA:
                 if (packet.nTo === this.sessionId && packet.nArg2 === FCWOPT.REDIS_JSON) {
-                    this._handleExtData(packet.sMessage as msg.ExtDataMessage);
+                    this._handleExtData(packet.sMessage as messages.ExtDataMessage);
                 }
                 break;
             case FCTYPE.METRICS:
@@ -201,14 +213,14 @@ export class Client implements EventEmitter {
                 // or possibly never, sent
                 break;
             case FCTYPE.MANAGELIST:
-                if (packet.nArg2 > 0 && packet.sMessage && (packet.sMessage as msg.ManageListMessage).rdata) {
-                    let rdata: any = this.processListData((packet.sMessage as msg.ManageListMessage).rdata);
+                if (packet.nArg2 > 0 && packet.sMessage && (packet.sMessage as messages.ManageListMessage).rdata) {
+                    let rdata: any = this.processListData((packet.sMessage as messages.ManageListMessage).rdata);
                     let nType: FCL = packet.nArg2;
 
                     switch (nType as FCL) {
                         case FCL.ROOMMATES:
                             if (Array.isArray(rdata)) {
-                                rdata.forEach((viewer: Message) => {
+                                rdata.forEach((viewer: messages.Message) => {
                                     if (viewer) {
                                         let possibleModel = Model.getModel(viewer.uid, viewer.lv === FCLEVEL.MODEL);
                                         if (possibleModel !== undefined) {
@@ -220,7 +232,7 @@ export class Client implements EventEmitter {
                             break;
                         case FCL.CAMS:
                             if (Array.isArray(rdata)) {
-                                rdata.forEach((model: Message) => {
+                                rdata.forEach((model: messages.Message) => {
                                     if (model) {
                                         let possibleModel = Model.getModel(model.uid, model.lv === FCLEVEL.MODEL);
                                         if (possibleModel !== undefined) {
@@ -237,7 +249,7 @@ export class Client implements EventEmitter {
                             break;
                         case FCL.FRIENDS:
                             if (Array.isArray(rdata)) {
-                                rdata.forEach((model: Message) => {
+                                rdata.forEach((model: messages.Message) => {
                                     if (model) {
                                         let possibleModel = Model.getModel(model.uid, model.lv === FCLEVEL.MODEL);
                                         if (possibleModel !== undefined) {
@@ -249,7 +261,7 @@ export class Client implements EventEmitter {
                             break;
                         case FCL.IGNORES:
                             if (Array.isArray(rdata)) {
-                                rdata.forEach((user: Message) => {
+                                rdata.forEach((user: messages.Message) => {
                                     if (user) {
                                         let possibleModel = Model.getModel(user.uid, user.lv === FCLEVEL.MODEL);
                                         if (possibleModel !== undefined) {
@@ -260,7 +272,7 @@ export class Client implements EventEmitter {
                             }
                             break;
                         case FCL.TAGS:
-                            let tagPayload2 = rdata as msg.FCTypeTagsResponse;
+                            let tagPayload2 = rdata as messages.FCTypeTagsResponse;
                             if (tagPayload2) {
                                 for (let key in tagPayload2) {
                                     if (tagPayload2.hasOwnProperty(key)) {
@@ -293,7 +305,7 @@ export class Client implements EventEmitter {
     //
     // This is an internal method, don't call it directly.
     private _readPacket(): void {
-        let pos: number = this.streamBufferPosition;
+        let pos: number = this.streamPosition;
         let intParams: number[] = [];
         let strParam: string | undefined;
 
@@ -339,7 +351,7 @@ export class Client implements EventEmitter {
             // At this point we have the full packet in the intParams and strParam values, but intParams is an unstructured array
             // Let's clean it up before we delegate to this.packetReceived.  (Leaving off the magic int, because it MUST be there always
             // and doesn't add anything to the understanding)
-            let strParam2: AnyMessage | undefined;
+            let strParam2: messages.AnyMessage | undefined;
             if (strParam) {
                 try {
                     strParam2 = JSON.parse(strParam);
@@ -354,18 +366,18 @@ export class Client implements EventEmitter {
                 intParams[4], // nArg1
                 intParams[5], // nArg2
                 intParams[6], // sPayload
-                strParam2 // sMessage
+                strParam2, // sMessage
             ));
 
             // If there's more to read, keep reading (which would be the case if the network sent >1 complete packet in a single transmission)
             if (pos < this.streamBuffer.length) {
-                this.streamBufferPosition = pos;
+                this.streamPosition = pos;
                 this._readPacket();
             } else {
                 // We read the full buffer, clear the buffer cache so that we can
                 // read cleanly from the beginning next time (and save memory)
                 this.streamBuffer = new Buffer(0);
-                this.streamBufferPosition = 0;
+                this.streamPosition = 0;
             }
         } catch (e) {
             // RangeErrors are expected because sometimes the buffer isn't complete.  Other errors are not...
@@ -377,7 +389,54 @@ export class Client implements EventEmitter {
         }
     }
 
-    private async _handleExtData(extData: msg.ExtDataMessage) {
+    // Same as the above, but for websockets
+    private _readWebSocketPacket(): void {
+        const sizeTagLength = 4;
+
+        while (this.streamWebSocketBuffer.length > sizeTagLength) {
+            let messageLength = parseInt(this.streamWebSocketBuffer.slice(0, sizeTagLength), 10);
+            if (isNaN(messageLength)) {
+                throw new Error("Invalid packet received! - " + this.streamWebSocketBuffer);
+            }
+
+            if (this.streamWebSocketBuffer.length < messageLength) {
+                return;
+            }
+
+            this.streamWebSocketBuffer = this.streamWebSocketBuffer.slice(sizeTagLength);
+            let currentMessage = this.streamWebSocketBuffer.slice(0, messageLength);
+            let originalMessage = currentMessage.slice();
+
+            try {
+                this.streamWebSocketBuffer = this.streamWebSocketBuffer.slice(messageLength);
+
+                let intParamsLength = currentMessage.split(" ", 5).reduce((p, c) => p + c.length, 0) + 5;
+                let intParams = currentMessage.split(" ", 5).map(s => parseInt(s, 10));
+                let [FCType, nFrom, nTo, nArg1, nArg2] = intParams;
+                currentMessage = currentMessage.slice(intParamsLength);
+
+                try {
+                    currentMessage = JSON.parse(decodeURIComponent(currentMessage));
+                } catch (e) {
+                    // Guess it wasn't a JSON blob. OK, just use it raw.
+                }
+
+                this._packetReceived(new Packet(
+                    FCType,
+                    nFrom,
+                    nTo,
+                    nArg1,
+                    nArg2,
+                    currentMessage.length,
+                    currentMessage.length === 0 ? undefined : currentMessage,
+                ));
+            } catch (e) {
+                throw new Error(`Error handling websocket packet: \n\t${e}\n\t"${originalMessage}"`);
+            }
+        }
+    }
+
+    private async _handleExtData(extData: messages.ExtDataMessage) {
         if (extData && extData.respkey) {
             let url = "http://www.myfreecams.com/php/FcwExtResp.php?";
             ["respkey", "type", "opts", "serv"].forEach((name) => {
@@ -402,7 +461,7 @@ export class Client implements EventEmitter {
     public processListData(rdata: any): any {
         // Really MFC?  Really??  Ok, commence the insanity...
         if (Array.isArray(rdata) && rdata.length > 0) {
-            let result: Array<msg.BaseMessage> = [];
+            let result: Array<messages.BaseMessage> = [];
             let schema: any[] = rdata[0];
             let schemaMap: Array<string | string[]> = [];
 
@@ -530,7 +589,19 @@ export class Client implements EventEmitter {
                 content = content.substr(startIndex, endIndex - startIndex);
 
                 // Then massage the function somewhat and prepend some prerequisites
-                content = "var document = {cookie: '', domain: 'myfreecams.com', location: { protocol: 'http:' }};var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;function bind(that,f){return f.bind(that);}" + content;
+                content =  `var document = {cookie: '', domain: 'myfreecams.com', location: { protocol: 'http:' }};
+                            var g_hPlatform = {
+                                "id": 01,
+                                "domain": "myfreecams.com",
+                                "name": "MyFreeCams",
+                                "code": "mfc",
+                                "image_url": "https://img.mfcimg.com/",
+                                "performer": "model",
+                                "Performer": "Model",
+                                "avatar_prefix": "avatar",
+                            };
+                            var XMLHttpRequest = require('xmlhttprequest').XMLHttpRequest;
+                            function bind(that,f){return f.bind(that);}` + content;
                 content = content.replace(/this.createRequestObject\(\)/g, "new XMLHttpRequest()");
                 content = content.replace(/new MfcImageHost\(\)/g, "{host: function(){return '';}}");
                 content = content.replace(/this\.Reset\(\);/g, "this.Reset();this.oReq = new XMLHttpRequest();");
@@ -557,29 +628,33 @@ export class Client implements EventEmitter {
     // usually nTo==0, nArg1==0, nArg2==0, sMsg==null
     public TxCmd(nType: FCTYPE, nTo: number = 0, nArg1: number = 0, nArg2: number = 0, sMsg?: string): void {
         logWithLevel(LogLevel.VERBOSE, "TxCmd Sending - nType: " + nType + ", nTo: " + nTo + ", nArg1: " + nArg1 + ", nArg2: " + nArg2 + ", sMsg:" + sMsg);
+        if (this.client === undefined) {
+            throw new Error("Cannot call TxCmd on a disconnected client");
+        }
+
         if (sMsg && (nType === FCTYPE.CMESG || nType === FCTYPE.PMESG)) {
             if (sMsg.match(/([\u0000-\u001f\u0022-\u0026\u0080-\uffff]+)/)) { sMsg = escape(sMsg).replace(/%20/g, " "); }
         }
 
-        let msgLength = (sMsg ? sMsg.length : 0);
-        let buf = new Buffer((7 * 4) + msgLength);
+        if (!this.useWebSockets) {
+            let msgLength = (sMsg ? sMsg.length : 0);
+            let buf = new Buffer((7 * 4) + msgLength);
 
-        buf.writeInt32BE(MAGIC, 0);
-        buf.writeInt32BE(nType, 4);
-        buf.writeInt32BE(this.sessionId, 8); // Session id, this is always our nFrom value
-        buf.writeInt32BE(nTo, 12);
-        buf.writeInt32BE(nArg1, 16);
-        buf.writeInt32BE(nArg2, 20);
-        buf.writeInt32BE(msgLength, 24);
+            buf.writeInt32BE(MAGIC, 0);
+            buf.writeInt32BE(nType, 4);
+            buf.writeInt32BE(this.sessionId, 8); // Session id, this is always our nFrom value
+            buf.writeInt32BE(nTo, 12);
+            buf.writeInt32BE(nArg1, 16);
+            buf.writeInt32BE(nArg2, 20);
+            buf.writeInt32BE(msgLength, 24);
 
-        if (sMsg) {
-            buf.write(sMsg, 28);
-        }
+            if (sMsg) {
+                buf.write(sMsg, 28);
+            }
 
-        if (this.client !== undefined) {
             this.client.write(buf);
         } else {
-            throw new Error("Cannot call TxCmd on a disconnected client");
+            this.client.send(`${nType} ${this.sessionId} ${nTo} ${nArg1} ${nArg2}${sMsg ? " " + sMsg : ""}\n\0`);
         }
     }
 
@@ -748,31 +823,74 @@ export class Client implements EventEmitter {
         return new Promise((resolve, reject) => {
             // Reset any read buffers so we are in a consistent state
             this.streamBuffer = new Buffer(0);
-            this.streamBufferPosition = 0;
+            this.streamPosition = 0;
             this.trafficCounter = 0;
 
             this.ensureServerConfigIsLoaded().then(() => {
-                let chatServer = this.serverConfig.chat_servers[Math.floor(Math.random() * this.serverConfig.chat_servers.length)];
-                logWithLevel(LogLevel.INFO, "Connecting to MyFreeCams chat server " + chatServer + "...");
+                if (!this.useWebSockets) {
+                    // Use good old TCP sockets and the older Flash method of
+                    // communicating with the MFC chat servers
+                    let chatServer = this.serverConfig.chat_servers[Math.floor(Math.random() * this.serverConfig.chat_servers.length)];
+                    logWithLevel(LogLevel.INFO, "Connecting to MyFreeCams chat server " + chatServer + "...");
 
-                this.client = this.net.connect(8100, chatServer + ".myfreecams.com", () => { // 'connect' listener
-                    this.client.on("data", (data: any) => {
-                        this._readData(data);
+                    this.client = this.net.connect(8100, chatServer + ".myfreecams.com", () => { // 'connect' listener
+                        this.client.on("data", (data: any) => {
+                            this._readData(data);
+                        });
+                        this.client.on("end", () => {
+                            this.disconnected();
+                        });
+
+                        // Connecting without logging in is the rarer case, so make the default to log in
+                        if (doLogin) {
+                            this.login();
+                        }
+
+                        this.currentlyConnected = true;
+                        logWithLevel(LogLevel.DEBUG, `[CLIENT] emitting: CLIENT_CONNECTED, doLogin: ${doLogin}`);
+                        this.emit("CLIENT_CONNECTED", doLogin);
+                        resolve();
                     });
-                    this.client.on("end", () => {
-                        this.disconnected();
+                } else {
+                    // Use websockets and the more modern way of
+                    // communicating with the MFC chat servers
+                    let wsSrvs = Object.getOwnPropertyNames(this.serverConfig.websocket_servers);
+                    let chatServer = wsSrvs[Math.floor(Math.random() * wsSrvs.length)];
+                    logWithLevel(LogLevel.INFO, "Connecting to MyFreeCams websocket server " + chatServer + "...");
+
+                    this.client = new WebSocket(`ws://${chatServer}.myfreecams.com:8080/fcsl`, {
+                            // protocol: this.serverConfig.websocket_servers[chatServer] as string,
+                            origin: "http://m.myfreecams.com",
                     });
 
-                    // Connecting without logging in is the rarer case, so make the default to log in
-                    if (doLogin) {
-                        this.login();
-                    }
+                    this.client.on("open", () => {
+                        this.client.on("message", (message: string, flags: any) => {
+                            this._readWebSocketData(message);
+                        });
 
-                    this.currentlyConnected = true;
-                    logWithLevel(LogLevel.DEBUG, `[CLIENT] emitting: CLIENT_CONNECTED, doLogin: ${doLogin}`);
-                    this.emit("CLIENT_CONNECTED", doLogin);
-                    resolve();
-                });
+                        this.client.on("close", () => {
+                            this.disconnected();
+                        });
+
+                        this.client.on("error", () => {
+                            if (this.client) {
+                                this.client.close();
+                            }
+                        });
+
+                        this.client.send("hello fcserver\n\0");
+
+                        // Connecting without logging in is the rarer case, so make the default to log in
+                        if (doLogin) {
+                            this.login();
+                        }
+
+                        this.currentlyConnected = true;
+                        logWithLevel(LogLevel.DEBUG, `[CLIENT] emitting: CLIENT_CONNECTED, doLogin: ${doLogin}`);
+                        this.emit("CLIENT_CONNECTED", doLogin);
+                        resolve();
+                    });
+                }
 
                 // Keep the server connection alive
                 this.keepAlive = setInterval(
@@ -788,14 +906,19 @@ export class Client implements EventEmitter {
                             // in 2+ minutes, then we may not really be connected anymore.
                             // Kill the connection and try reconnecting again...
                             logWithLevel(LogLevel.INFO, "Server has not responded in over 2 minutes. Trying to reconnect now.");
-                            this.client.removeAllListeners("end");
-                            this.client.end();
+                            if (!this.useWebSockets) {
+                                this.client.removeAllListeners("end");
+                                this.client.end();
+                            } else {
+                                this.client.removeAllListeners("close");
+                                this.client.close();
+                            }
                             this.client = undefined;
                             this.disconnected();
                         }
                         this.trafficCounter = 0;
                     }.bind(this),
-                    120 * 1000
+                    this.useWebSockets ? 15 * 1000 : 120 * 1000,
                 );
             });
         });
@@ -859,7 +982,11 @@ export class Client implements EventEmitter {
         if (password !== undefined) {
             this.password = password;
         }
-        this.TxCmd(FCTYPE.LOGIN, 0, 20071025, 0, this.username + ":" + this.password);
+        if (!this.useWebSockets) {
+            this.TxCmd(FCTYPE.LOGIN, 0, 20071025, 0, this.username + ":" + this.password);
+        } else {
+            this.TxCmd(FCTYPE.LOGIN, 0, 20080909, 0, this.username + ":" + this.password);
+        }
     }
 
     // Connects to MFC and logs in, just like this.connect(true),
@@ -892,7 +1019,11 @@ export class Client implements EventEmitter {
                         resolve();
                     });
                 }
-                this.client.end();
+                if (!this.useWebSockets) {
+                    this.client.end();
+                } else {
+                    this.client.close();
+                }
                 this.client = undefined;
 
                 // If we're not currently connected, then calling
