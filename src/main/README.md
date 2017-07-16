@@ -4,8 +4,10 @@ Creates and maintains a TCP socket connection to MFC chat servers similar to the
 
 ---
 
-### constructor(username: string = "guest", password: string = "guest")
+### constructor(username: string = "guest", password: string = "guest", useWebSockets: boolean = false)
 Creates a Client instance with the given credentials, or with guest credentials by default.  [See my comment here if you wish to log in with a real account.](https://github.com/ZombieAlex/MFCAuto/blob/master/src/main/Client.ts#L42)
+
+Set the third parameter to true to make the Client connect via WebSockets rather than traditional TCP sockets.
 
 You can have multiple Client instances active and connected at once. They will not interfere with each other.
 
