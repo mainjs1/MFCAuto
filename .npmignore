@@ -4,3 +4,4 @@ typings/
 tsd.json
 tsconfig.json
 .eslintrc.json
+package-lock.json
