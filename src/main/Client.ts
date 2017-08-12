@@ -840,6 +840,9 @@ export class Client implements EventEmitter {
                         this.client.on("end", () => {
                             this.disconnected();
                         });
+                        this.client.on("error", () => {
+                            this.disconnected();
+                        });
 
                         // Connecting without logging in is the rarer case, so make the default to log in
                         if (doLogin) {
